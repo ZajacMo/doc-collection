@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./server/Dockerfile
+    container_name: doc-collection-backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - backend-uploads:/app/uploads
+      - backend-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - UPLOAD_DIR=./uploads
+      - MAX_FILE_SIZE=20971520
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./client
+    container_name: doc-collection-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - app-network
+
+# 使用命名卷而不是绑定挂载，更适合生产环境
+volumes:
+  backend-uploads:
+  backend-data:
+
+networks:
+  app-network:
+    driver: bridge

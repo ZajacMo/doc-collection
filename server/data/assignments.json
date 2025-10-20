@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1",
+    "title": "JavaScript基础练习",
+    "description": "完成教材第5章的所有习题，重点掌握函数、数组和对象的使用。",
+    "deadline": "2023-12-31T23:59:59.000Z",
+    "createTime": "2023-12-15T10:00:00.000Z",
+    "updateTime": "2023-12-15T10:00:00.000Z",
+    "namingRule": "{学号}_{姓名}_JavaScript基础练习_{提交日期}",
+    "fileTypes": ["pdf", "doc", "docx", "zip"]
+  },
+  {
+    "id": "2",
+    "title": "Vue组件开发",
+    "description": "创建一个包含至少3个子组件的Vue项目，实现一个简单的待办事项管理系统。",
+    "deadline": "2024-01-10T23:59:59.000Z",
+    "createTime": "2023-12-20T14:30:00.000Z",
+    "updateTime": "2023-12-22T09:15:00.000Z",
+    "namingRule": "{学号}_{姓名}_Vue组件开发_{提交日期}",
+    "fileTypes": ["zip", "rar"]
+  },
+  {
+    "id": "3",
+    "title": "数据库设计作业",
+    "description": "设计一个学生管理系统的数据库，包含至少5张表，并写出相应的建表SQL语句。",
+    "deadline": "2024-01-05T23:59:59.000Z",
+    "createTime": "2023-12-18T16:20:00.000Z",
+    "updateTime": "2023-12-18T16:20:00.000Z",
+    "namingRule": "{学号}_{姓名}_数据库设计_{提交日期}",
+    "fileTypes": ["pdf", "doc", "docx", "sql"]
+  }
+]

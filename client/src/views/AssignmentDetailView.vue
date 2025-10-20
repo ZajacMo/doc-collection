@@ -1,0 +1,946 @@
+<template>
+  <div class="assignment-detail-container">
+    <el-container>
+      <!-- 顶部导航栏 -->
+      <el-header class="header">
+        <div class="header-content">
+          <div class="header-title">
+            <i class="el-icon-document"></i>
+            <span>作业收集系统</span>
+          </div>
+          <div class="header-user">
+            <el-dropdown>
+              <span class="el-dropdown-link">
+                <i class="el-icon-user"></i>
+                {{ userInfo?.name || '用户' }}
+                <i class="el-icon-arrow-down el-icon--right"></i>
+              </span>
+              <el-dropdown-menu slot="dropdown">
+                <el-dropdown-item @click.native="goToProfile">
+                  <i class="el-icon-user-solid"></i>
+                  个人中心
+                </el-dropdown-item>
+                <el-dropdown-item @click.native="handleLogout">
+                  <i class="el-icon-switch-button"></i>
+                  退出登录
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </el-dropdown>
+          </div>
+        </div>
+      </el-header>
+
+      <!-- 主内容区域 -->
+      <el-container>
+        <!-- 侧边栏 -->
+        <el-aside width="200px" class="aside">
+          <el-menu 
+            default-active="2"
+            class="el-menu-vertical-demo"
+            @select="handleMenuSelect"
+          >
+            <el-menu-item index="1">
+              <i class="el-icon-s-home"></i>
+              <span slot="title">首页</span>
+            </el-menu-item>
+            <el-menu-item index="2">
+              <i class="el-icon-document-copy"></i>
+              <span slot="title">作业列表</span>
+            </el-menu-item>
+            <el-menu-item index="3">
+              <i class="el-icon-upload2"></i>
+              <span slot="title">我的提交</span>
+            </el-menu-item>
+            <el-menu-item index="4" v-if="userInfo?.role === 'admin'">
+              <i class="el-icon-setting"></i>
+              <span slot="title">管理中心</span>
+            </el-menu-item>
+          </el-menu>
+        </el-aside>
+
+        <!-- 内容区域 -->
+        <el-main class="main">
+          <!-- 返回按钮 -->
+          <div class="back-button-container">
+            <el-button type="text" @click="goBack">
+              <i class="el-icon-arrow-left"></i>
+              返回作业列表
+            </el-button>
+          </div>
+
+          <!-- 加载状态 -->
+          <div v-if="loading" class="loading-container">
+            <el-loading-spinner></el-loading-spinner>
+            <p>加载中...</p>
+          </div>
+
+          <!-- 作业详情卡片 -->
+          <div v-else-if="assignment" class="assignment-detail-card">
+            <!-- 作业标题和状态 -->
+            <div class="assignment-header">
+              <h1 class="assignment-title">{{ assignment.title }}</h1>
+              <el-tag 
+                v-if="userSubmission && userSubmission.status === 'submitted'"
+                type="success"
+                size="large"
+              >
+                已提交
+              </el-tag>
+              <el-tag 
+                v-else-if="isAssignmentExpired(assignment.deadline)"
+                type="danger"
+                size="large"
+              >
+                已逾期
+              </el-tag>
+              <el-tag 
+                v-else-if="isAssignmentUrgent(assignment.deadline)"
+                type="warning"
+                size="large"
+              >
+                紧急
+              </el-tag>
+              <el-tag 
+                v-else
+                type="info"
+                size="large"
+              >
+                进行中
+              </el-tag>
+            </div>
+
+            <!-- 作业基本信息 -->
+            <div class="assignment-info">
+              <div class="info-row">
+                <div class="info-label">创建时间：</div>
+                <div class="info-value">{{ formatDate(assignment.createTime) }}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">截止日期：</div>
+                <div class="info-value" :class="{
+                  'text-danger': isAssignmentExpired(assignment.deadline),
+                  'text-warning': isAssignmentUrgent(assignment.deadline)
+                }">
+                  {{ formatDate(assignment.deadline) }}
+                  <span v-if="!isAssignmentExpired(assignment.deadline)" class="countdown">
+                    （剩余：{{ getCountdown(assignment.deadline) }}）
+                  </span>
+                </div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">创建者：</div>
+                <div class="info-value">{{ assignment.creator || '管理员' }}</div>
+              </div>
+            </div>
+
+            <!-- 作业描述 -->
+            <div class="assignment-description">
+              <h3>作业描述</h3>
+              <p>{{ assignment.description || '暂无描述' }}</p>
+            </div>
+
+            <!-- 文件命名规则 -->
+            <div class="naming-rule-section">
+              <h3>文件命名规则</h3>
+              <div class="naming-rule-container">
+                <pre>{{ assignment.namingRule }}</pre>
+                <div class="rule-tips">
+                  <p>⚠️ 请严格按照此规则命名文件，否则无法提交！</p>
+                  <p>支持的变量：{学号}, {姓名}, {作业名称}, {提交日期}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 允许的文件类型 -->
+            <div class="file-types-section">
+              <h3>允许的文件类型</h3>
+              <div class="file-types">
+                <el-tag 
+                  v-for="type in assignment.fileTypes" 
+                  :key="type" 
+                  type="info"
+                >
+                  {{ type.toUpperCase() }}
+                </el-tag>
+              </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="action-buttons">
+              <el-button 
+                v-if="!isAssignmentExpired(assignment.deadline) && (!userSubmission || userSubmission.status !== 'submitted')"
+                type="primary" 
+                size="large"
+                @click="goToSubmit"
+              >
+                <i class="el-icon-upload2"></i>
+                提交作业
+              </el-button>
+              <el-button 
+                v-else-if="userSubmission && userSubmission.status === 'submitted'"
+                type="success" 
+                size="large"
+                @click="downloadMyFile"
+              >
+                <i class="el-icon-download"></i>
+                下载我的作业
+              </el-button>
+              <el-button 
+                v-if="userInfo?.role === 'admin'"
+                type="warning" 
+                size="large"
+                @click="showUpdateDialog"
+              >
+                <i class="el-icon-edit"></i>
+                编辑作业
+              </el-button>
+            </div>
+          </div>
+
+          <!-- 提交情况统计 -->
+          <div v-if="assignment && userInfo?.role === 'admin'" class="submission-stats">
+            <h3>提交情况统计</h3>
+            <div class="stats-cards">
+              <el-card class="stat-card">
+                <div class="stat-content">
+                  <div class="stat-number">{{ totalStudents }}</div>
+                  <div class="stat-label">总人数</div>
+                </div>
+              </el-card>
+              <el-card class="stat-card">
+                <div class="stat-content">
+                  <div class="stat-number">{{ submittedCount }}</div>
+                  <div class="stat-label">已提交</div>
+                  <div class="stat-percentage">{{ submittedPercentage }}%</div>
+                </div>
+              </el-card>
+              <el-card class="stat-card">
+                <div class="stat-content">
+                  <div class="stat-number">{{ pendingCount }}</div>
+                  <div class="stat-label">未提交</div>
+                  <div class="stat-percentage">{{ pendingPercentage }}%</div>
+                </div>
+              </el-card>
+            </div>
+          </div>
+
+          <!-- 提交列表 -->
+          <div 
+            v-if="assignment && ((userInfo?.role === 'admin' && submissionList.length > 0) || 
+                              (userSubmission && userInfo?.role !== 'admin'))"
+            class="submission-list"
+          >
+            <h3>{{ userInfo?.role === 'admin' ? '提交列表' : '我的提交记录' }}</h3>
+            <el-table 
+              :data="userInfo?.role === 'admin' ? submissionList : [userSubmission]" 
+              style="width: 100%"
+              stripe
+              border
+            >
+              <el-table-column prop="studentId" label="学号" width="120"></el-table-column>
+              <el-table-column prop="studentName" label="姓名" width="120"></el-table-column>
+              <el-table-column prop="submitTime" label="提交时间" width="180">
+                <template slot-scope="scope">
+                  {{ formatDate(scope.row.submitTime) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="fileName" label="文件名" min-width="200"></el-table-column>
+              <el-table-column prop="fileSize" label="文件大小" width="100">
+                <template slot-scope="scope">
+                  {{ formatFileSize(scope.row.fileSize) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="status" label="状态" width="100">
+                <template slot-scope="scope">
+                  <el-tag 
+                    v-if="scope.row.status === 'submitted'"
+                    type="success"
+                  >
+                    已提交
+                  </el-tag>
+                  <el-tag 
+                    v-if="scope.row.status === 'late'"
+                    type="danger"
+                  >
+                    已逾期
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="180" fixed="right">
+                <template slot-scope="scope">
+                  <el-button 
+                    type="primary" 
+                    size="small" 
+                    @click="downloadFile(scope.row.fileId, scope.row.fileName)"
+                  >
+                    下载
+                  </el-button>
+                  <el-button 
+                    v-if="userInfo?.role === 'admin'"
+                    type="danger" 
+                    size="small" 
+                    @click="deleteSubmission(scope.row.id)"
+                  >
+                    删除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-main>
+      </el-container>
+    </el-container>
+
+    <!-- 编辑作业对话框 -->
+    <el-dialog 
+      title="编辑作业" 
+      :visible.sync="updateDialogVisible"
+      width="600px"
+    >
+      <el-form 
+        ref="updateFormRef" 
+        :model="updateForm" 
+        :rules="updateRules" 
+        label-width="100px"
+      >
+        <el-form-item label="作业名称" prop="title">
+          <el-input v-model="updateForm.title" placeholder="请输入作业名称"></el-input>
+        </el-form-item>
+        <el-form-item label="作业描述" prop="description">
+          <el-input 
+            v-model="updateForm.description" 
+            type="textarea" 
+            placeholder="请输入作业描述"
+            :rows="4"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="截止日期" prop="deadline">
+          <el-date-picker
+            v-model="updateForm.deadline"
+            type="datetime"
+            placeholder="选择截止日期时间"
+            style="width: 100%"
+          ></el-date-picker>
+        </el-form-item>
+        <el-form-item label="文件命名规则" prop="namingRule">
+          <el-input 
+            v-model="updateForm.namingRule" 
+            placeholder="例如：{学号}_{姓名}_{作业名称}_{提交日期}"
+          ></el-input>
+          <div class="form-tip">支持的变量：{学号}, {姓名}, {作业名称}, {提交日期}</div>
+        </el-form-item>
+        <el-form-item label="允许的文件类型" prop="fileTypes">
+          <el-select 
+            v-model="updateForm.fileTypes" 
+            multiple 
+            placeholder="选择允许的文件类型"
+          >
+            <el-option label="PDF" value="pdf"></el-option>
+            <el-option label="Word文档" value="doc"></el-option>
+            <el-option label="Word文档" value="docx"></el-option>
+            <el-option label="Excel表格" value="xls"></el-option>
+            <el-option label="Excel表格" value="xlsx"></el-option>
+            <el-option label="PPT演示" value="ppt"></el-option>
+            <el-option label="PPT演示" value="pptx"></el-option>
+            <el-option label="ZIP压缩" value="zip"></el-option>
+            <el-option label="RAR压缩" value="rar"></el-option>
+            <el-option label="图片" value="jpg"></el-option>
+            <el-option label="图片" value="jpeg"></el-option>
+            <el-option label="图片" value="png"></el-option>
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="updateDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleUpdateAssignment">确定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import { ref, onMounted, computed } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { getCurrentUser, logoutUser } from '../services/userService';
+import { 
+  getAssignmentById, 
+  updateAssignment, 
+  isAssignmentExpired 
+} from '../services/assignmentService';
+import { 
+  getSubmissionsByAssignment, 
+  getSubmissionByUserAndAssignment, 
+  deleteSubmission, 
+  downloadFile as downloadFileAPI 
+} from '../services/submissionService';
+
+export default {
+  name: 'AssignmentDetailView',
+  setup() {
+    const userInfo = ref(getCurrentUser());
+    const assignment = ref(null);
+    const userSubmission = ref(null);
+    const submissionList = ref([]);
+    const allStudents = ref(0);
+    const loading = ref(true);
+    const updateDialogVisible = ref(false);
+    const updateFormRef = ref(null);
+    const updateForm = ref({
+      title: '',
+      description: '',
+      deadline: new Date(),
+      namingRule: '',
+      fileTypes: []
+    });
+    
+    const updateRules = ref({
+      title: [
+        { required: true, message: '请输入作业名称', trigger: 'blur' },
+        { min: 2, max: 100, message: '作业名称长度在 2 到 100 个字符之间', trigger: 'blur' }
+      ],
+      deadline: [
+        { required: true, message: '请选择截止日期', trigger: 'change' }
+      ],
+      namingRule: [
+        { required: true, message: '请输入文件命名规则', trigger: 'blur' }
+      ],
+      fileTypes: [
+        {
+          required: true,
+          message: '请至少选择一种文件类型',
+          trigger: 'change',
+          type: 'array',
+          min: 1
+        }
+      ]
+    });
+    
+    // 格式化日期
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    };
+    
+    // 检查作业是否紧急（24小时内截止）
+    const isAssignmentUrgent = (deadline) => {
+      const now = new Date();
+      const deadlineDate = new Date(deadline);
+      const diff = deadlineDate - now;
+      return diff > 0 && diff < 24 * 60 * 60 * 1000;
+    };
+    
+    // 计算剩余时间
+    const getCountdown = (deadline) => {
+      const now = new Date();
+      const deadlineDate = new Date(deadline);
+      const diff = deadlineDate - now;
+      
+      if (diff <= 0) return '已逾期';
+      
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      
+      if (days > 0) {
+        return `${days}天${hours}小时`;
+      } else if (hours > 0) {
+        return `${hours}小时${minutes}分钟`;
+      } else {
+        return `${minutes}分钟`;
+      }
+    };
+    
+    // 格式化文件大小
+    const formatFileSize = (bytes) => {
+      if (!bytes) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+    
+    // 计算提交统计
+    const totalStudents = computed(() => allStudents.value);
+    const submittedCount = computed(() => submissionList.value.length);
+    const pendingCount = computed(() => totalStudents.value - submittedCount.value);
+    const submittedPercentage = computed(() => 
+      totalStudents.value > 0 ? Math.round((submittedCount.value / totalStudents.value) * 100) : 0
+    );
+    const pendingPercentage = computed(() => 100 - submittedPercentage.value);
+    
+    // 获取作业ID
+    const getAssignmentIdFromUrl = () => {
+      const path = window.location.pathname;
+      const parts = path.split('/');
+      return parts[parts.length - 1];
+    };
+    
+    // 加载数据
+    const loadData = async () => {
+      try {
+        loading.value = true;
+        const assignmentId = getAssignmentIdFromUrl();
+        
+        // 获取作业详情
+        const assignmentData = await getAssignmentById(assignmentId);
+        assignment.value = assignmentData;
+        
+        // 加载用户提交记录
+        const userSubmissionData = await getSubmissionByUserAndAssignment(userInfo.value.studentId, assignmentId);
+        userSubmission.value = userSubmissionData;
+        
+        // 如果是管理员，获取所有提交记录和学生总数
+        if (userInfo.value.role === 'admin') {
+          const submissionListData = await getSubmissionsByAssignment(assignmentId);
+          submissionList.value = submissionListData || [];
+          
+          // 假设总人数是从Excel加载的用户数
+          // 这里简化处理，实际应该从后端获取
+          allStudents.value = 50; // 示例值
+        }
+        
+      } catch (error) {
+        ElMessage.error('加载作业详情失败');
+        console.error('加载作业详情失败:', error);
+      } finally {
+        loading.value = false;
+      }
+    };
+    
+    // 返回作业列表
+    const goBack = () => {
+      window.location.href = '/assignments';
+    };
+    
+    // 跳转到提交页面
+    const goToSubmit = () => {
+      window.location.href = `/submit/${getAssignmentIdFromUrl()}`;
+    };
+    
+    // 跳转到个人中心
+    const goToProfile = () => {
+      window.location.href = '/profile';
+    };
+    
+    // 退出登录
+    const handleLogout = () => {
+      logoutUser();
+    };
+    
+    // 处理菜单选择
+    const handleMenuSelect = (index) => {
+      switch (index) {
+        case '1':
+          window.location.href = '/home';
+          break;
+        case '2':
+          window.location.href = '/assignments';
+          break;
+        case '3':
+          window.location.href = '/assignments?status=submitted';
+          break;
+        case '4':
+          window.location.href = '/admin';
+          break;
+      }
+    };
+    
+    // 显示编辑作业对话框
+    const showUpdateDialog = () => {
+      // 复制当前作业数据到编辑表单
+      updateForm.value = {
+        title: assignment.value.title,
+        description: assignment.value.description,
+        deadline: new Date(assignment.value.deadline),
+        namingRule: assignment.value.namingRule,
+        fileTypes: [...assignment.value.fileTypes]
+      };
+      updateDialogVisible.value = true;
+    };
+    
+    // 处理更新作业
+    const handleUpdateAssignment = async () => {
+      try {
+        // 表单验证
+        await updateFormRef.value.validate();
+        
+        // 调用更新作业接口
+        const assignmentId = getAssignmentIdFromUrl();
+        await updateAssignment(assignmentId, updateForm.value);
+        
+        ElMessage.success('作业更新成功');
+        updateDialogVisible.value = false;
+        
+        // 重新加载数据
+        loadData();
+      } catch (error) {
+        ElMessage.error(error.response?.data?.message || '更新作业失败');
+        console.error('更新作业失败:', error);
+      }
+    };
+    
+    // 下载文件
+    const downloadFile = async (fileId, fileName) => {
+      try {
+        await downloadFileAPI(fileId, fileName);
+      } catch (error) {
+        ElMessage.error('文件下载失败');
+        console.error('文件下载失败:', error);
+      }
+    };
+    
+    // 下载我的文件
+    const downloadMyFile = () => {
+      if (userSubmission.value) {
+        downloadFile(userSubmission.value.fileId, userSubmission.value.fileName);
+      }
+    };
+    
+    // 删除提交
+    const deleteSubmission = async (submissionId) => {
+      try {
+        await ElMessageBox.confirm(
+          '确定要删除此提交记录吗？删除后将无法恢复。',
+          '确认删除',
+          {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }
+        );
+        
+        // 调用删除接口
+        await deleteSubmission(submissionId);
+        
+        ElMessage.success('提交记录删除成功');
+        
+        // 重新加载数据
+        loadData();
+      } catch (error) {
+        // 用户取消删除不会抛出错误，只有真正的错误才会显示提示
+        if (error !== 'cancel') {
+          ElMessage.error(error.response?.data?.message || '删除提交记录失败');
+          console.error('删除提交记录失败:', error);
+        }
+      }
+    };
+    
+    // 组件挂载时加载数据
+    onMounted(() => {
+      loadData();
+    });
+    
+    return {
+      userInfo,
+      assignment,
+      userSubmission,
+      submissionList,
+      loading,
+      updateDialogVisible,
+      updateFormRef,
+      updateForm,
+      updateRules,
+      totalStudents,
+      submittedCount,
+      pendingCount,
+      submittedPercentage,
+      pendingPercentage,
+      formatDate,
+      isAssignmentExpired,
+      isAssignmentUrgent,
+      getCountdown,
+      formatFileSize,
+      goBack,
+      goToSubmit,
+      goToProfile,
+      handleLogout,
+      handleMenuSelect,
+      showUpdateDialog,
+      handleUpdateAssignment,
+      downloadFile,
+      downloadMyFile,
+      deleteSubmission
+    };
+  }
+};
+</script>
+
+<style scoped>
+.assignment-detail-container {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.header {
+  background-color: #1890ff;
+  color: white;
+  height: 60px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  padding: 0 20px;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.header-title i {
+  margin-right: 10px;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.aside {
+  background-color: #304156;
+  color: white;
+}
+
+.el-menu-vertical-demo {
+  background-color: #304156;
+  border-right: none;
+}
+
+.el-menu-vertical-demo .el-menu-item {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.el-menu-vertical-demo .el-menu-item:hover {
+  background-color: #1890ff;
+  color: white;
+}
+
+.el-menu-vertical-demo .el-menu-item.is-active {
+  background-color: #1890ff;
+  color: white;
+}
+
+.main {
+  background-color: #f5f7fa;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.back-button-container {
+  margin-bottom: 20px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+}
+
+.assignment-detail-card {
+  background-color: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.assignment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.assignment-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #303133;
+  margin: 0;
+  flex: 1;
+  margin-right: 20px;
+}
+
+.assignment-info {
+  margin-bottom: 30px;
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: 15px;
+  align-items: center;
+}
+
+.info-label {
+  width: 100px;
+  color: #606266;
+  font-weight: bold;
+}
+
+.info-value {
+  color: #303133;
+  font-size: 15px;
+}
+
+.countdown {
+  font-size: 13px;
+  color: #909399;
+  margin-left: 10px;
+}
+
+.assignment-description {
+  margin-bottom: 30px;
+}
+
+.assignment-description h3 {
+  color: #303133;
+  margin-bottom: 15px;
+  font-size: 18px;
+}
+
+.assignment-description p {
+  color: #606266;
+  line-height: 1.8;
+  font-size: 15px;
+  white-space: pre-wrap;
+}
+
+.naming-rule-section {
+  margin-bottom: 30px;
+}
+
+.naming-rule-section h3 {
+  color: #303133;
+  margin-bottom: 15px;
+  font-size: 18px;
+}
+
+.naming-rule-container {
+  background-color: #f5f7fa;
+  padding: 20px;
+  border-radius: 4px;
+  border-left: 4px solid #e6a23c;
+}
+
+.naming-rule-container pre {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  color: #e6a23c;
+  font-weight: bold;
+}
+
+.rule-tips {
+  margin-top: 10px;
+}
+
+.rule-tips p {
+  margin: 5px 0;
+  font-size: 13px;
+  color: #909399;
+}
+
+.file-types-section {
+  margin-bottom: 30px;
+}
+
+.file-types-section h3 {
+  color: #303133;
+  margin-bottom: 15px;
+  font-size: 18px;
+}
+
+.file-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.submission-stats {
+  background-color: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.submission-stats h3 {
+  color: #303133;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.stats-cards {
+  display: flex;
+  gap: 20px;
+}
+
+.stat-card {
+  flex: 1;
+  min-width: 200px;
+}
+
+.stat-content {
+  text-align: center;
+}
+
+.stat-number {
+  font-size: 36px;
+  font-weight: bold;
+  color: #1890ff;
+  margin-bottom: 10px;
+}
+
+.stat-label {
+  font-size: 16px;
+  color: #606266;
+  margin-bottom: 5px;
+}
+
+.stat-percentage {
+  font-size: 14px;
+  color: #909399;
+}
+
+.submission-list {
+  background-color: white;
+  padding: 30px;
+  border-radius: 8px;
+}
+
+.submission-list h3 {
+  color: #303133;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.text-danger {
+  color: #f56c6c;
+}
+
+.text-warning {
+  color: #e6a23c;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 5px;
+}
+</style>

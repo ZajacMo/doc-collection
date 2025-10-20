@@ -1,0 +1,35 @@
+[
+  {
+    "id": "1",
+    "studentId": "2023001",
+    "assignmentId": "1",
+    "fileName": "2023001_张三_JavaScript基础练习_20231225.pdf",
+    "filePath": "uploads/1/2023001/2023001_张三_JavaScript基础练习_20231225_1703481600000.pdf",
+    "fileSize": 524288,
+    "description": "已完成所有习题，包括附加题。",
+    "submitTime": "2023-12-25T15:30:00.000Z",
+    "status": "submitted"
+  },
+  {
+    "id": "2",
+    "studentId": "2023002",
+    "assignmentId": "1",
+    "fileName": "2023002_李四_JavaScript基础练习_20231226.docx",
+    "filePath": "uploads/1/2023002/2023002_李四_JavaScript基础练习_20231226_1703568000000.docx",
+    "fileSize": 786432,
+    "description": "函数部分有点难度，但已尽力完成。",
+    "submitTime": "2023-12-26T10:45:00.000Z",
+    "status": "submitted"
+  },
+  {
+    "id": "3",
+    "studentId": "2023001",
+    "assignmentId": "2",
+    "fileName": "2023001_张三_Vue组件开发_20240102.zip",
+    "filePath": "uploads/2/2023001/2023001_张三_Vue组件开发_20240102_1704172800000.zip",
+    "fileSize": 2097152,
+    "description": "Vue项目包含了TodoList、UserInfo和Settings三个组件。",
+    "submitTime": "2024-01-02T18:20:00.000Z",
+    "status": "submitted"
+  }
+]
