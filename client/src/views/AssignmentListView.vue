@@ -114,93 +114,102 @@
             >
               <el-table-column type="index" label="序号" width="80"></el-table-column>
               <el-table-column prop="title" label="作业名称" width="300">
-                <template slot-scope="scope">
-                  <span @click="goToDetail(scope.row.id)" class="assignment-title-link">
-                    {{ scope.row.title }}
+                <template v-slot="{ row }">
+                  <span v-if="row && row.id" @click="goToDetail(row.id)" class="assignment-title-link">
+                    {{ row.title || '-' }}
                   </span>
+                  <span v-else>-</span>
                 </template>
               </el-table-column>
               <el-table-column prop="createTime" label="创建时间" width="180">
-                <template slot-scope="scope">
-                  {{ formatDate(scope.row.createTime) }}
+                <template v-slot="{ row }">
+                  {{ row && row.createTime ? formatDate(row.createTime) : '-' }}
                 </template>
               </el-table-column>
               <el-table-column prop="deadline" label="截止日期" width="180">
-                <template slot-scope="scope">
-                  <span :class="{
-                    'text-danger': isAssignmentExpired(scope.row.deadline),
-                    'text-warning': isAssignmentUrgent(scope.row.deadline)
+                <template v-slot="{ row }">
+                  <span v-if="row && row.deadline" :class="{
+                    'text-danger': isAssignmentExpired(row.deadline),
+                    'text-warning': isAssignmentUrgent(row.deadline)
                   }">
-                    {{ formatDate(scope.row.deadline) }}
+                    {{ formatDate(row.deadline) }}
                   </span>
+                  <span v-else>-</span>
                 </template>
               </el-table-column>
               <el-table-column prop="status" label="我的状态" width="120">
-                <template slot-scope="scope">
-                  <el-tag 
-                    v-if="scope.row.status === 'submitted'"
-                    type="success"
-                  >
-                    已提交
-                  </el-tag>
-                  <el-tag 
-                    v-else-if="scope.row.status === 'late'"
-                    type="danger"
-                  >
-                    已逾期
-                  </el-tag>
-                  <el-tag 
-                    v-else-if="isAssignmentExpired(scope.row.deadline)"
-                    type="danger"
-                  >
-                    未提交(逾期)
-                  </el-tag>
-                  <el-tag 
-                    v-else-if="isAssignmentUrgent(scope.row.deadline)"
-                    type="warning"
-                  >
-                    未提交(紧急)
-                  </el-tag>
-                  <el-tag 
-                    v-else
-                    type="info"
-                  >
-                    未提交
-                  </el-tag>
+                <template v-slot="{ row }">
+                  <div v-if="row">
+                    <el-tag 
+                      v-if="row.status === 'submitted'"
+                      type="success"
+                    >
+                      已提交
+                    </el-tag>
+                    <el-tag 
+                      v-else-if="row.status === 'late'"
+                      type="danger"
+                    >
+                      已逾期
+                    </el-tag>
+                    <el-tag 
+                      v-else-if="row.deadline && isAssignmentExpired(row.deadline)"
+                      type="danger"
+                    >
+                      未提交(逾期)
+                    </el-tag>
+                    <el-tag 
+                      v-else-if="row.deadline && isAssignmentUrgent(row.deadline)"
+                      type="warning"
+                    >
+                      未提交(紧急)
+                    </el-tag>
+                    <el-tag 
+                      v-else
+                      type="info"
+                    >
+                      未提交
+                    </el-tag>
+                  </div>
+                  <el-tag v-else type="info">-</el-tag>
                 </template>
               </el-table-column>
               <el-table-column label="文件命名规则" min-width="200">
-                <template slot-scope="scope">
-                  <el-tooltip :content="scope.row.namingRule" placement="top">
-                    <div class="naming-rule">{{ scope.row.namingRule }}</div>
+                <template v-slot="{ row }">
+                  <el-tooltip v-if="row && row.namingRule" :content="row.namingRule" placement="top">
+                    <div class="naming-rule">{{ row.namingRule }}</div>
                   </el-tooltip>
+                  <span v-else>-</span>
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="180" fixed="right">
-                <template slot-scope="scope">
-                  <el-button 
-                    type="primary" 
-                    size="small" 
-                    @click="goToDetail(scope.row.id)"
-                  >
-                    详情
-                  </el-button>
-                  <el-button 
-                    v-if="!isAssignmentExpired(scope.row.deadline) && scope.row.status !== 'submitted'"
-                    type="success" 
-                    size="small" 
-                    @click="goToSubmit(scope.row.id)"
-                  >
-                    提交
-                  </el-button>
-                  <el-button 
-                    v-if="userInfo?.role === 'admin'"
-                    type="danger" 
-                    size="small" 
-                    @click="handleDelete(scope.row.id, scope.row.title)"
-                  >
-                    删除
-                  </el-button>
+                <template v-slot="{ row }">
+                  <div v-if="row && row.id">
+                    <el-button 
+                      type="primary" 
+                      size="small" 
+                      @click="goToDetail(row.id)"
+                    >
+                      详情
+                    </el-button>
+                    <el-button 
+                      v-if="row.deadline && !isAssignmentExpired(row.deadline) && row.status !== 'submitted'"
+                      type="success" 
+                      size="small" 
+                      @click="goToSubmit(row.id)"
+                    >
+                      提交
+                    </el-button>
+                    <el-button 
+                      v-if="userInfo?.role === 'admin'"
+                      type="danger" 
+                      size="small" 
+                      @click="handleDelete(row.id, row.title)"
+                    >
+                      删除
+                    </el-button>
+                  </div>
+                  <span v-else>-</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -225,7 +234,7 @@
     <!-- 创建作业对话框 -->
     <el-dialog 
       title="创建作业" 
-      :visible.sync="createDialogVisible"
+      v-model="createDialogVisible"
       width="600px"
     >
       <el-form 
@@ -485,8 +494,9 @@ export default {
     
     // 显示创建作业对话框
     const showCreateDialog = () => {
-      createDialogVisible.value = true;
-    };
+        createDialogVisible.value = true;
+        console.log('createDialogVisible:', createDialogVisible.value);
+      };
     
     // 处理创建作业
     const handleCreateAssignment = async () => {
@@ -498,7 +508,7 @@ export default {
         await createAssignment(createForm.value);
         
         ElMessage.success('作业创建成功');
-        createDialogVisible.value = false;
+          createDialogVisible.value = false;
         
         // 重置表单
         createForm.value = {
@@ -588,7 +598,7 @@ export default {
 <style scoped>
 .assignment-list-container {
   height: 100vh;
-  overflow: hidden;
+  overflow: scroll;
 }
 
 .header {

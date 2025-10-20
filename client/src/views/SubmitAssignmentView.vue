@@ -417,7 +417,7 @@ export default {
 <style scoped>
 .submit-assignment-container {
   height: 100vh;
-  overflow: hidden;
+  overflow: scroll;
 }
 
 .header {

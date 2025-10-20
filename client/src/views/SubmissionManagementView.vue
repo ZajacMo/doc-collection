@@ -845,7 +845,7 @@ export default {
 <style scoped>
 .submission-management-container {
   height: 100vh;
-  overflow: hidden;
+  overflow: scroll;
 }
 
 .header {

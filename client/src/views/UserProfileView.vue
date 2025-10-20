@@ -560,7 +560,7 @@ export default {
 <style scoped>
 .user-profile-container {
   height: 100vh;
-  overflow: hidden;
+  overflow: scroll;
 }
 
 .header {

@@ -37,7 +37,8 @@ export const getSubmissionsByUser = async (userId) => {
 // 根据作业ID获取所有提交
 export const getSubmissionsByAssignment = async (assignmentId) => {
   try {
-    const response = await api.get(`/submissions/assignment/${assignmentId}`);
+    // 服务器端实际的端点是/assignments/:id/submissions
+    const response = await api.get(`/assignments/${assignmentId}/submissions`);
     return response;
   } catch (error) {
     console.error('获取作业提交记录失败:', error);
@@ -48,12 +49,27 @@ export const getSubmissionsByAssignment = async (assignmentId) => {
 // 根据用户ID和作业ID获取提交（支持获取历史记录）
 export const getSubmissionByUserAndAssignment = async (userId, assignmentId, includeHistory = false) => {
   try {
-    let endpoint = `/submissions/user/${userId}/${assignmentId}`;
-    if (includeHistory) {
-      endpoint += '?includeHistory=true';
-    }
+    // 服务器端只有获取用户所有提交的端点，所以我们先获取所有提交，然后在客户端过滤
+    const endpoint = `/submissions/user/${userId}`;
     const response = await api.get(endpoint);
-    return response;
+    
+    // 在客户端根据作业ID过滤提交
+    if (Array.isArray(response)) {
+      const filteredSubmissions = response.filter(submission => 
+        submission.assignmentId === assignmentId
+      );
+      
+      // 如果只需要最新的提交，返回第一个匹配的
+      if (!includeHistory && filteredSubmissions.length > 0) {
+        return filteredSubmissions[0];
+      }
+      
+      // 返回所有匹配的提交（历史记录）
+      return filteredSubmissions.length > 0 ? filteredSubmissions : null;
+    }
+    
+    // 处理响应不是数组的情况
+    return null;
   } catch (error) {
     // 如果没有找到，返回null而不是抛出错误
     if (error.response?.status === 404) {

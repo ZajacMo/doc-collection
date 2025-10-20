@@ -29,22 +29,7 @@ const router = useRouter()
 onMounted(() => {
   checkLogin()
   
-  // 监听路由变化，进行权限校验
-  router.beforeEach((to, from, next) => {
-    const user = getCurrentUser()
-    
-    // 如果路由需要管理员权限
-    if (to.meta.requiresAdmin) {
-      if (user && user.role === 'admin') {
-        next()
-      } else {
-        ElMessage.error('没有权限访问该页面')
-        next('/home')
-      }
-    } else {
-      next()
-    }
-  })
+  // 路由守卫已在router/index.js中配置，这里不再重复设置
 })
 </script>
 
@@ -62,8 +47,10 @@ onMounted(() => {
 }
 
 #app {
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  overflow-x: hidden;
 }
 
 /* 全局样式 */

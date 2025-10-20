@@ -115,66 +115,75 @@
             <el-table :data="recentAssignments" style="width: 100%">
               <el-table-column prop="title" label="作业名称" width="300"></el-table-column>
               <el-table-column prop="deadline" label="截止日期">
-                <template slot-scope="scope">
-                  <span :class="{
-                    'text-danger': isAssignmentExpired(scope.row.deadline),
-                    'text-warning': isAssignmentUrgent(scope.row.deadline)
-                  }">
-                    {{ formatDate(scope.row.deadline) }}
-                  </span>
-                </template>
-              </el-table-column>
+                  <template v-slot="{ row }">
+                    <div v-if="row && row.deadline">
+                      <span :class="{
+                        'text-danger': row.deadline && isAssignmentExpired(row.deadline),
+                        'text-warning': row.deadline && isAssignmentUrgent(row.deadline)
+                      }">
+                        {{ row.deadline && formatDate(row.deadline) }}
+                      </span>
+                    </div>
+                    <span v-else>-</span>
+                  </template>
+                </el-table-column>
               <el-table-column prop="status" label="状态">
-                <template slot-scope="scope">
-                  <el-tag 
-                    v-if="scope.row.status === 'submitted'"
-                    type="success"
-                  >
-                    已提交
-                  </el-tag>
-                  <el-tag 
-                    v-else-if="scope.row.status === 'late'"
-                    type="danger"
-                  >
-                    已逾期
-                  </el-tag>
-                  <el-tag 
-                    v-else-if="isAssignmentExpired(scope.row.deadline)"
-                    type="danger"
-                  >
-                    未提交(逾期)
-                  </el-tag>
-                  <el-tag 
-                    v-else-if="isAssignmentUrgent(scope.row.deadline)"
-                    type="warning"
-                  >
-                    未提交(紧急)
-                  </el-tag>
-                  <el-tag 
-                    v-else
-                    type="info"
-                  >
-                    未提交
-                  </el-tag>
-                </template>
-              </el-table-column>
+                    <template v-slot="{ row }">
+                      <div v-if="row">
+                        <el-tag 
+                          v-if="row.status === 'submitted'"
+                          type="success"
+                        >
+                          已提交
+                        </el-tag>
+                        <el-tag 
+                          v-else-if="row.status === 'late'"
+                          type="danger"
+                        >
+                          已逾期
+                        </el-tag>
+                        <el-tag 
+                          v-else-if="row.deadline && isAssignmentExpired(row.deadline)"
+                          type="danger"
+                        >
+                          未提交(逾期)
+                        </el-tag>
+                        <el-tag 
+                          v-else-if="row.deadline && isAssignmentUrgent(row.deadline)"
+                          type="warning"
+                        >
+                          未提交(紧急)
+                        </el-tag>
+                        <el-tag 
+                          v-else
+                          type="info"
+                        >
+                          未提交
+                        </el-tag>
+                      </div>
+                      <el-tag v-else type="info">-</el-tag>
+                    </template>
+                  </el-table-column>
               <el-table-column label="操作" width="150" fixed="right">
-                <template slot-scope="scope">
-                  <el-button 
-                    type="primary" 
-                    size="small" 
-                    @click="goToDetail(scope.row.id)"
-                  >
-                    详情
-                  </el-button>
-                  <el-button 
-                    v-if="!isAssignmentExpired(scope.row.deadline) && scope.row.status !== 'submitted'"
-                    type="success" 
-                    size="small" 
-                    @click="goToSubmit(scope.row.id)"
-                  >
-                    提交
-                  </el-button>
+                <template v-slot="{ row }">
+                  <div v-if="row && row.id">
+                    <el-button 
+                      type="primary" 
+                      size="small" 
+                      @click="goToDetail(row.id)"
+                    >
+                      详情
+                    </el-button>
+                    <el-button 
+                      v-if="row.deadline && !isAssignmentExpired(row.deadline) && row.status !== 'submitted'"
+                      type="success" 
+                      size="small" 
+                      @click="goToSubmit(row.id)"
+                    >
+                      提交
+                    </el-button>
+                  </div>
+                  <span v-else>-</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -187,7 +196,8 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue';
-import { ElMessage } from 'element-plus';
+import { useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { getCurrentUser, logoutUser } from '../services/userService';
 import { getAllAssignments, getTimeRemaining, isAssignmentExpired } from '../services/assignmentService';
 import { getSubmissionsByUser } from '../services/submissionService';
@@ -195,6 +205,7 @@ import { getSubmissionsByUser } from '../services/submissionService';
 export default {
   name: 'HomeView',
   setup() {
+    const router = useRouter();
     const userInfo = ref(getCurrentUser());
     const currentDate = ref('');
     const assignments = ref([]);
@@ -266,39 +277,50 @@ export default {
     const handleMenuSelect = (index) => {
       switch (index) {
         case '1':
-          window.location.href = '/home';
+          router.push('/home');
           break;
         case '2':
-          window.location.href = '/assignments';
+          router.push('/assignments');
           break;
         case '3':
           // 我的提交页面（可以在AssignmentListView中筛选）
-          window.location.href = '/assignments?submitted=true';
+          router.push('/assignments?submitted=true');
           break;
         case '4':
-          window.location.href = '/admin';
+          router.push('/admin');
           break;
       }
     };
     
     // 跳转到作业详情
     const goToDetail = (id) => {
-      window.location.href = `/assignments/${id}`;
+      console.log('Navigating to assignment detail with id:', id);
+      router.push(`/assignments/${id}`);
     };
     
     // 跳转到提交页面
     const goToSubmit = (id) => {
-      window.location.href = `/submit/${id}`;
+      router.push(`/submit/${id}`);
     };
     
     // 跳转到个人中心
     const goToProfile = () => {
-      window.location.href = '/profile';
+      router.push('/profile');
     };
     
     // 退出登录
     const handleLogout = () => {
-      logoutUser();
+      // 使用Element Plus的确认对话框
+      ElMessageBox.confirm('确定要退出登录吗？', '退出登录', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        logoutUser();
+      }).catch(() => {
+        // 用户取消退出登录
+        ElMessage.info('已取消退出登录');
+      });
     };
     
     // 组件挂载时加载数据
@@ -332,7 +354,7 @@ export default {
 <style scoped>
 .home-container {
   height: 100vh;
-  overflow: hidden;
+  overflow: scroll;
 }
 
 .header {

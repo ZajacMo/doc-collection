@@ -78,7 +78,7 @@ export default {
         loading.value = true;
         
         // 调用登录接口
-        const result = await loginUser(loginForm.studentId, loginForm.password);
+        const result = await loginUser(loginForm.value.studentId, loginForm.value.password);
         
         ElMessage.success('登录成功');
         

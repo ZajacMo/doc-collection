@@ -109,7 +109,6 @@ exports.deleteUser = (req, res) => {
 // 用户登录
 exports.loginUser = (req, res) => {
   const { studentId, password } = req.body;
-  
   // 简化的登录逻辑，实际应用中应该使用密码哈希
   const user = users.find(u => u.studentId === studentId);
   

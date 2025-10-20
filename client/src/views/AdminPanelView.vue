@@ -1,6 +1,6 @@
 <template>
   <div class="admin-panel-container">
-    <el-container>
+    <el-container class="full-height-container">
       <!-- 顶部导航栏 -->
       <el-header class="header">
         <div class="header-content">
@@ -33,7 +33,7 @@
       <!-- 主内容区域 -->
       <el-container>
         <!-- 侧边栏 -->
-        <el-aside width="200px" class="aside">
+        <el-aside width="200px" class="aside" height="auto">
           <el-menu 
             default-active="4"
             class="el-menu-vertical-demo"
@@ -129,7 +129,7 @@
                   >
                     <el-table-column prop="time" label="时间" width="180">
                       <template slot-scope="scope">
-                        {{ formatDate(scope.row.time) }}
+                        {{ scope && scope.row ? formatDate(scope.row.time) : '-' }}
                       </template>
                     </el-table-column>
                     <el-table-column prop="user" label="用户" width="120"></el-table-column>
@@ -182,41 +182,45 @@
                   <el-table-column prop="role" label="角色" width="100">
                     <template slot-scope="scope">
                       <el-tag 
-                        v-if="scope.row.role === 'admin'"
+                        v-if="scope && scope.row && scope.row.role === 'admin'"
                         type="danger"
                       >
                         管理员
                       </el-tag>
                       <el-tag 
-                        v-else
+                        v-else-if="scope && scope.row"
                         type="primary"
                       >
                         学生
                       </el-tag>
+                      <span v-else>-</span>
                     </template>
                   </el-table-column>
                   <el-table-column prop="createTime" label="创建时间" width="180">
                     <template slot-scope="scope">
-                      {{ formatDate(scope.row.createTime) }}
+                      {{ scope && scope.row ? formatDate(scope.row.createTime) : '-' }}
                     </template>
                   </el-table-column>
                   <el-table-column label="操作" width="180" fixed="right">
                     <template slot-scope="scope">
-                      <el-button 
-                        type="primary" 
-                        size="small" 
-                        @click="editUser(scope.row)"
-                      >
-                        编辑
-                      </el-button>
-                      <el-button 
-                        v-if="scope.row.role !== 'admin'"
-                        type="danger" 
-                        size="small" 
-                        @click="deleteUser(scope.row.studentId, scope.row.name)"
-                      >
-                        删除
-                      </el-button>
+                      <template v-if="scope && scope.row">
+                        <el-button 
+                          type="primary" 
+                          size="small" 
+                          @click="editUser(scope.row)"
+                        >
+                          编辑
+                        </el-button>
+                        <el-button 
+                          v-if="scope.row.role !== 'admin'"
+                          type="danger" 
+                          size="small" 
+                          @click="deleteUser(scope.row.studentId, scope.row.name)"
+                        >
+                          删除
+                        </el-button>
+                      </template>
+                      <span v-else>-</span>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -670,21 +674,16 @@ export default {
         { required: true, message: '请输入作业名称', trigger: 'blur' },
         { min: 2, max: 100, message: '作业名称长度在 2 到 100 个字符之间', trigger: 'blur' }
       ],
-      deadline: [
-        { required: true, message: '请选择截止日期', trigger: 'change' }
-      ],
-      namingRule: [
-        { required: true, message: '请输入文件命名规则', trigger: 'blur' }
-      ],
-      fileTypes: [
-        {
-          required: true,
-          message: '请至少选择一种文件类型',
-          trigger: 'change',
-          type: 'array',
-          min: 1
-        }
-      ]
+      description: [{ required: true, message: '请输入作业描述', trigger: 'blur' }],
+      deadline: [{ required: true, message: '请选择截止日期', trigger: 'change' }],
+      namingRule: [{ required: true, message: '请输入文件命名规则', trigger: 'blur' }],
+      fileTypes: [{
+        required: true,
+        message: '请至少选择一种文件类型',
+        trigger: 'change',
+        type: 'array',
+        min: 1
+      }]
     });
     
     // 提交相关
@@ -787,28 +786,36 @@ export default {
       try {
         // 获取所有用户
         const usersData = await getAllUsers();
-        allUsers.value = usersData || [];
+        allUsers.value = Array.isArray(usersData) ? usersData : [];
         
         // 获取所有作业
         const assignmentsData = await getAllAssignments();
-        allAssignments.value = assignmentsData || [];
+        allAssignments.value = Array.isArray(assignmentsData) ? assignmentsData : [];
         
         // 获取所有提交并添加作业标题
         const submissionsData = await getAllSubmissions();
-        allSubmissions.value = submissionsData.map(submission => {
-          const assignment = allAssignments.value.find(a => a.id === submission.assignmentId);
-          return {
-            ...submission,
-            assignmentTitle: assignment?.title || '未知作业'
-          };
-        });
+        if (Array.isArray(submissionsData)) {
+          allSubmissions.value = submissionsData.map(submission => {
+            const assignment = allAssignments.value.find(a => a.id === submission.assignmentId);
+            return {
+              ...submission,
+              assignmentTitle: assignment?.title || '未知作业'
+            };
+          });
+        } else {
+          allSubmissions.value = [];
+        }
         
-        // 生成近期活动数据（模拟数据）
+        // 生成近期活动数据
         generateRecentActivities();
         
       } catch (error) {
         ElMessage.error('加载数据失败');
         console.error('加载数据失败:', error);
+        // 确保数据始终是数组，防止表格渲染错误
+        allUsers.value = [];
+        allAssignments.value = [];
+        allSubmissions.value = [];
       }
     };
     
@@ -816,36 +823,43 @@ export default {
     const generateRecentActivities = () => {
       const activities = [];
       
-      // 模拟用户提交作业
-      const recentSubmissions = [...allSubmissions.value]
-        .sort((a, b) => new Date(b.submitTime) - new Date(a.submitTime))
-        .slice(0, 10);
-      
-      recentSubmissions.forEach(submission => {
-        activities.push({
-          time: submission.submitTime,
-          user: submission.studentName,
-          action: '提交了作业',
-          details: submission.assignmentTitle
+      // 安全处理用户提交作业
+      if (Array.isArray(allSubmissions.value) && allSubmissions.value.length > 0) {
+        const recentSubmissions = [...allSubmissions.value]
+          .filter(submission => submission && submission.submitTime && submission.studentName)
+          .sort((a, b) => new Date(b.submitTime) - new Date(a.submitTime))
+          .slice(0, 10);
+        
+        recentSubmissions.forEach(submission => {
+          activities.push({
+            time: submission.submitTime,
+            user: submission.studentName,
+            action: '提交了作业',
+            details: submission.assignmentTitle || '未知作业'
+          });
         });
-      });
+      }
       
-      // 模拟创建作业
-      const recentAssignments = [...allAssignments.value]
-        .sort((a, b) => new Date(b.createTime) - new Date(a.createTime))
-        .slice(0, 5);
-      
-      recentAssignments.forEach(assignment => {
-        activities.push({
-          time: assignment.createTime,
-          user: assignment.creator || '管理员',
-          action: '创建了作业',
-          details: assignment.title
+      // 安全处理创建作业
+      if (Array.isArray(allAssignments.value) && allAssignments.value.length > 0) {
+        const recentAssignments = [...allAssignments.value]
+          .filter(assignment => assignment && assignment.createTime && assignment.title)
+          .sort((a, b) => new Date(b.createTime) - new Date(a.createTime))
+          .slice(0, 5);
+        
+        recentAssignments.forEach(assignment => {
+          activities.push({
+            time: assignment.createTime,
+            user: assignment.creator || '管理员',
+            action: '创建了作业',
+            details: assignment.title
+          });
         });
-      });
+      }
       
-      // 按时间排序
+      // 按时间排序并确保数据安全
       recentActivitiesData.value = activities
+        .filter(activity => activity && activity.time)
         .sort((a, b) => new Date(b.time) - new Date(a.time))
         .slice(0, 15);
     };
@@ -1223,8 +1237,9 @@ export default {
 
 <style scoped>
 .admin-panel-container {
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  display: flex;
+  overflow: scroll;
 }
 
 .header {
@@ -1282,10 +1297,19 @@ export default {
   color: white;
 }
 
-.main {
+.full-height-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.full-height-container > .el-main {
+  flex: 1;
   background-color: #f5f7fa;
   padding: 20px;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .page-header {

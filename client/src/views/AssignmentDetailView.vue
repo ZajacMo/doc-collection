@@ -70,7 +70,7 @@
 
           <!-- 加载状态 -->
           <div v-if="loading" class="loading-container">
-            <el-loading-spinner></el-loading-spinner>
+            <el-icon class="el-icon-loading"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M928 160H96c-35.3 0-64 28.7-64 64v640c0 35.3 28.7 64 64 64h832c35.3 0 64-28.7 64-64V224c0-35.3-28.7-64-64-64zm-80 660H176V280h672v540z"></path><path fill="currentColor" d="M482 424a60 60 0 10120 0 60 60 0 10-120 0zM402 538.4a60 60 0 100-120 60 60 0 000 120zm160 0a60 60 0 100-120 60 60 0 000 120zm120.7 156a60 60 0 100-120 60 60 0 000 120zM562 712a60 60 0 100-120 60 60 0 000 120zm-160 0a60 60 0 100-120 60 60 0 000 120zM381.3 594.4a60 60 0 100-120 60 60 0 000 120z"></path></svg></el-icon>
             <p>加载中...</p>
           </div>
 
@@ -240,35 +240,27 @@
               <el-table-column prop="studentId" label="学号" width="120"></el-table-column>
               <el-table-column prop="studentName" label="姓名" width="120"></el-table-column>
               <el-table-column prop="submitTime" label="提交时间" width="180">
-                <template slot-scope="scope">
-                  {{ formatDate(scope.row.submitTime) }}
+                <template #default="scope">
+                  {{ scope && scope.row ? formatDate(scope.row.submitTime) : '-' }}
                 </template>
               </el-table-column>
               <el-table-column prop="fileName" label="文件名" min-width="200"></el-table-column>
               <el-table-column prop="fileSize" label="文件大小" width="100">
-                <template slot-scope="scope">
-                  {{ formatFileSize(scope.row.fileSize) }}
+                <template #default="scope">
+                  {{ scope && scope.row ? formatFileSize(scope.row.fileSize) : '-' }}
                 </template>
               </el-table-column>
               <el-table-column prop="status" label="状态" width="100">
-                <template slot-scope="scope">
-                  <el-tag 
-                    v-if="scope.row.status === 'submitted'"
-                    type="success"
-                  >
-                    已提交
-                  </el-tag>
-                  <el-tag 
-                    v-if="scope.row.status === 'late'"
-                    type="danger"
-                  >
-                    已逾期
-                  </el-tag>
+                <template #default="scope">
+                  <el-tag v-if="scope && scope.row && scope.row.status === 'submitted'" type="success">已提交</el-tag>
+                  <el-tag v-else-if="scope && scope.row && scope.row.status === 'late'" type="danger">已逾期</el-tag>
+                  <span v-else>-</span>
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="180" fixed="right">
-                <template slot-scope="scope">
+                <template #default="scope">
                   <el-button 
+                    v-if="scope && scope.row && scope.row.fileId"
                     type="primary" 
                     size="small" 
                     @click="downloadFile(scope.row.fileId, scope.row.fileName)"
@@ -276,13 +268,14 @@
                     下载
                   </el-button>
                   <el-button 
-                    v-if="userInfo?.role === 'admin'"
+                    v-if="userInfo?.role === 'admin' && scope && scope.row && scope.row.id"
                     type="danger" 
                     size="small" 
                     @click="deleteSubmission(scope.row.id)"
                   >
                     删除
                   </el-button>
+                  <span v-if="!(scope && scope.row)">-</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -294,7 +287,7 @@
     <!-- 编辑作业对话框 -->
     <el-dialog 
       title="编辑作业" 
-      :visible.sync="updateDialogVisible"
+      v-model="updateDialogVisible"
       width="600px"
     >
       <el-form 
@@ -360,7 +353,8 @@
 
 <script>
 import { ref, onMounted, computed } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { useRoute, useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox, ElLoading, ElIcon } from 'element-plus';
 import { getCurrentUser, logoutUser } from '../services/userService';
 import { 
   getAssignmentById, 
@@ -469,25 +463,50 @@ export default {
     );
     const pendingPercentage = computed(() => 100 - submittedPercentage.value);
     
+    // 使用Vue Router获取路由信息
+    const route = useRoute();
+    const router = useRouter();
+    
     // 获取作业ID
     const getAssignmentIdFromUrl = () => {
-      const path = window.location.pathname;
-      const parts = path.split('/');
-      return parts[parts.length - 1];
+      // 优先从route params获取作业ID，其次从query获取，最后从URL路径解析
+      let assignmentId = route.params.id || route.query.id;
+      
+      // 如果都没有，则尝试从URL路径解析
+      if (!assignmentId) {
+        const pathSegments = window.location.pathname.split('/');
+        assignmentId = pathSegments[pathSegments.length - 1];
+      }
+      
+      console.log('Using assignmentId:', assignmentId);
+      return assignmentId;
     };
     
     // 加载数据
     const loadData = async () => {
       try {
         loading.value = true;
-        const assignmentId = getAssignmentIdFromUrl();
+        
+        // 直接从route params获取ID，这是最可靠的方式
+        let assignmentId = route.params.id;
+        
+        console.log('Route params id:', assignmentId);
+        
+        // 验证assignmentId是否有效
+        if (!assignmentId || assignmentId.trim() === '') {
+          throw new Error('无效的作业ID');
+        }
+        
+        // 确保ID是字符串类型
+        assignmentId = String(assignmentId);
+        console.log('Validated assignmentId:', assignmentId);
         
         // 获取作业详情
         const assignmentData = await getAssignmentById(assignmentId);
         assignment.value = assignmentData;
         
-        // 加载用户提交记录
-        const userSubmissionData = await getSubmissionByUserAndAssignment(userInfo.value.studentId, assignmentId);
+        // 加载用户提交记录 - 使用用户的id字段而不是studentId
+        const userSubmissionData = await getSubmissionByUserAndAssignment(userInfo.value.id, assignmentId);
         userSubmission.value = userSubmissionData;
         
         // 如果是管理员，获取所有提交记录和学生总数
@@ -510,17 +529,17 @@ export default {
     
     // 返回作业列表
     const goBack = () => {
-      window.location.href = '/assignments';
+      router.push('/assignments');
     };
     
     // 跳转到提交页面
     const goToSubmit = () => {
-      window.location.href = `/submit/${getAssignmentIdFromUrl()}`;
+      router.push(`/submit/${getAssignmentIdFromUrl()}`);
     };
     
     // 跳转到个人中心
     const goToProfile = () => {
-      window.location.href = '/profile';
+      router.push('/profile');
     };
     
     // 退出登录
@@ -532,31 +551,35 @@ export default {
     const handleMenuSelect = (index) => {
       switch (index) {
         case '1':
-          window.location.href = '/home';
+          router.push('/home');
           break;
         case '2':
-          window.location.href = '/assignments';
+          router.push('/assignments');
           break;
         case '3':
-          window.location.href = '/assignments?status=submitted';
+          router.push({ path: '/assignments', query: { status: 'submitted' } });
           break;
         case '4':
-          window.location.href = '/admin';
+          router.push('/admin');
           break;
       }
     };
     
     // 显示编辑作业对话框
     const showUpdateDialog = () => {
-      // 复制当前作业数据到编辑表单
-      updateForm.value = {
-        title: assignment.value.title,
-        description: assignment.value.description,
-        deadline: new Date(assignment.value.deadline),
-        namingRule: assignment.value.namingRule,
-        fileTypes: [...assignment.value.fileTypes]
-      };
-      updateDialogVisible.value = true;
+      // 复制当前作业数据到编辑表单，添加空值检查
+      if (assignment.value) {
+        updateForm.value = {
+          title: assignment.value.title || '',
+          description: assignment.value.description || '',
+          deadline: assignment.value.deadline ? new Date(assignment.value.deadline) : new Date(),
+          namingRule: assignment.value.namingRule || '',
+          fileTypes: Array.isArray(assignment.value.fileTypes) ? [...assignment.value.fileTypes] : []
+        };
+        updateDialogVisible.value = true;
+      } else {
+        ElMessage.warning('作业数据未加载完成，请稍后再试');
+      }
     };
     
     // 处理更新作业
@@ -669,7 +692,7 @@ export default {
 <style scoped>
 .assignment-detail-container {
   height: 100vh;
-  overflow: hidden;
+  overflow: scroll;
 }
 
 .header {
