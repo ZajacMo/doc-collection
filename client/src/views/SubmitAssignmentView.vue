@@ -26,7 +26,9 @@
 
           <!-- 加载状态 -->
           <div v-if="loading" class="loading-container">
-            <el-loading-spinner></el-loading-spinner>
+            <el-icon class="is-loading" style="font-size: 48px;">
+              <loading />
+            </el-icon>
             <p>加载中...</p>
           </div>
 
@@ -54,19 +56,20 @@
             </div>
 
             <!-- 文件命名规则提示 -->
-            <div class="naming-rule-tip">
-              <el-card class="rule-tip-card">
-                <div class="rule-tip-header">
-                  <i class="el-icon-warning"></i>
-                  <span>重要提示</span>
-                </div>
-                <div class="rule-tip-content">
-                  <p>请严格按照以下命名规则提交文件：</p>
-                  <pre>{{ assignment.namingRule }}</pre>
-                  <p class="example">示例：{{ generateExampleFileName() }}</p>
-                </div>
-              </el-card>
-            </div>
+          <div class="naming-rule-tip">
+            <el-card class="rule-tip-card">
+              <div class="rule-tip-header">
+                <i class="el-icon-warning"></i>
+                <span>重要提示</span>
+              </div>
+              <div class="rule-tip-content">
+                <p>请严格按照以下命名规则提交文件：</p>
+                <pre>{{ assignment.namingRule }}</pre>
+                <p class="example">示例：{{ generateExampleFileName() }}</p>
+                <p style="color: #e6a23c;">系统将自动根据用户信息为文件命名为"学号-姓名.扩展名"</p>
+              </div>
+            </el-card>
+          </div>
 
             <!-- 提交表单 -->
             <el-card class="submit-form-card">
@@ -76,12 +79,15 @@
                 :rules="submitRules" 
                 label-width="100px"
               >
-                <el-form-item label="学号" prop="studentId">
-                  <el-input v-model="submitForm.studentId" placeholder="请输入您的学号"></el-input>
-                </el-form-item>
-                <el-form-item label="姓名" prop="studentName">
-                  <el-input v-model="submitForm.studentName" placeholder="请输入您的姓名"></el-input>
-                </el-form-item>
+                <!-- 系统自动获取用户信息，无需手动输入学号和姓名 -->
+          <el-form-item>
+            <el-tag type="info" size="small">
+              学号：{{ submitForm.studentId }}
+            </el-tag>
+            <el-tag type="info" size="small" style="margin-left: 10px;">
+              姓名：{{ submitForm.studentName }}
+            </el-tag>
+          </el-form-item>
                 <el-form-item label="作业名称" prop="assignmentName">
                   <el-input v-model="submitForm.assignmentName" :disabled="true"></el-input>
                 </el-form-item>
@@ -96,7 +102,7 @@
                     :data="getUploadData"
                     :show-file-list="true"
                     :file-list="fileList"
-                    multiple="false"
+                    :multiple="false"
                     accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.jpg,.jpeg,.png"
                   >
                     <el-button size="small" type="primary">选择文件</el-button>
@@ -141,6 +147,7 @@
 <script>
 import { ref, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { Loading } from '@element-plus/icons-vue';
 import {
   getAssignmentById,
   isAssignmentExpired
@@ -150,9 +157,13 @@ import {
   downloadFile as downloadFileAPI,
   validateFileName
 } from '../services/submissionService';
+import { getCurrentUser } from '../services/userService';
 
 export default {
   name: 'SubmitAssignmentView',
+  components: {
+    Loading
+  },
   setup() {
     const userInfo = ref({});
     const assignment = ref(null);
@@ -160,7 +171,7 @@ export default {
     const loading = ref(true);
     const submitFormRef = ref(null);
     const fileList = ref([]);
-    const uploadUrl = 'http://localhost:3001/api/submissions/upload';
+    const uploadUrl = 'http://localhost:3001/api/submissions';
     const uploadHeaders = ref({});
     
     const submitForm = ref({
@@ -172,12 +183,6 @@ export default {
     });
     
     const submitRules = ref({
-      studentId: [
-        { required: true, message: '请输入学号', trigger: 'blur' }
-      ],
-      studentName: [
-        { required: true, message: '请输入姓名', trigger: 'blur' }
-      ],
       assignmentName: [
         { required: true, message: '作业名称不能为空', trigger: 'blur' }
       ],
@@ -212,18 +217,8 @@ export default {
     
     // 生成示例文件名
     const generateExampleFileName = () => {
-      if (!assignment.value) return '';
-      
-      let exampleName = assignment.value.namingRule;
-      const today = new Date();
-      const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-      
-      exampleName = exampleName.replace('{学号}', '1001');
-      exampleName = exampleName.replace('{姓名}', '张三');
-      exampleName = exampleName.replace('{作业名称}', assignment.value.title.replace(/[\s\/\\:*?"<>|]/g, ''));
-      exampleName = exampleName.replace('{提交日期}', dateStr);
-      
-      return exampleName;
+      // 系统将自动命名为"学号-姓名.扩展名"
+      return '1001-张三.pdf';
     };
     
     // 获取作业ID
@@ -241,10 +236,16 @@ export default {
         
         // 获取作业详情
         const assignmentData = await getAssignmentById(assignmentId);
+        // 从localStorage获取用户信息
+        const userData = getCurrentUser();
+        
         assignment.value = assignmentData;
+        userInfo.value = userData;
         
         // 更新表单数据
         submitForm.value.assignmentName = assignmentData.title;
+        submitForm.value.studentId = userData.studentId || '';
+        submitForm.value.studentName = userData.name || '';
         
       } catch (error) {
         ElMessage.error('加载作业信息失败');
@@ -279,12 +280,8 @@ export default {
         return false;
       }
       
-      // 检查文件名是否符合规则
-      const isValid = validateFileName(file.name, assignment.value.namingRule, {studentId: submitForm.value.studentId, name: submitForm.value.studentName}, assignment.value.title);
-      if (!isValid.isValid) {
-        ElMessage.error(`文件名不符合规则：${isValid.message}`);
-        return false;
-      }
+      // 由于系统会自动重命名文件，这里不再验证原始文件名格式
+      // 只验证文件类型和大小
       
       // 检查是否已过截止日期
       if (isAssignmentExpired(assignment.value.deadline)) {
@@ -311,7 +308,10 @@ export default {
       return {
         assignmentId: getAssignmentIdFromUrl(),
         studentId: submitForm.value.studentId,
-        studentName: submitForm.value.studentName
+        studentName: submitForm.value.studentName,
+        assignmentName: submitForm.value.assignmentName, // 提供作业名称用于创建文件夹
+        description: submitForm.value.description || '', // 添加描述字段
+        autoRename: true // 指示后端自动重命名文件
       };
     };
     
@@ -584,8 +584,21 @@ export default {
 }
 
 .error-container {
-  max-width: 800px;
+  max-width: 90%;
   margin: 0 auto;
-  margin-top: 100px;
+  margin-top: 50px;
+}
+
+/* 表单元素响应式样式 */
+@media (max-width: 768px) {
+  .el-form-item {
+    margin-bottom: 15px;
+  }
+  
+  .el-form-item__label {
+    padding: 0;
+    margin-bottom: 5px;
+    line-height: 1.2;
+  }
 }
 </style>

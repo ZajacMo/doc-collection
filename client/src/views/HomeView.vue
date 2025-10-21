@@ -1,65 +1,5 @@
 <template>
   <div class="home-container">
-    <el-container>
-      <!-- 顶部导航栏 -->
-      <el-header class="header">
-        <div class="header-content">
-          <div class="header-title">
-            <i class="el-icon-document"></i>
-            <span>作业收集系统</span>
-          </div>
-          <div class="header-user">
-            <el-dropdown>
-              <span class="el-dropdown-link">
-                <i class="el-icon-user"></i>
-                {{ userInfo?.name || '用户' }}
-                <i class="el-icon-arrow-down el-icon--right"></i>
-              </span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native="goToProfile">
-                  <i class="el-icon-user-solid"></i>
-                  个人中心
-                </el-dropdown-item>
-                <el-dropdown-item @click.native="handleLogout">
-                  <i class="el-icon-switch-button"></i>
-                  退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-          </div>
-        </div>
-      </el-header>
-
-      <!-- 主内容区域 -->
-      <el-container>
-        <!-- 侧边栏 -->
-        <el-aside width="200px" class="aside">
-          <el-menu 
-            default-active="1"
-            class="el-menu-vertical-demo"
-            @select="handleMenuSelect"
-          >
-            <el-menu-item index="1">
-              <i class="el-icon-s-home"></i>
-              <span slot="title">首页</span>
-            </el-menu-item>
-            <el-menu-item index="2">
-              <i class="el-icon-document-copy"></i>
-              <span slot="title">作业列表</span>
-            </el-menu-item>
-            <el-menu-item index="3">
-              <i class="el-icon-upload2"></i>
-              <span slot="title">我的提交</span>
-            </el-menu-item>
-            <el-menu-item index="4" v-if="userInfo?.role === 'admin'">
-              <i class="el-icon-setting"></i>
-              <span slot="title">管理中心</span>
-            </el-menu-item>
-          </el-menu>
-        </el-aside>
-
-        <!-- 内容区域 -->
-        <el-main class="main">
           <!-- 欢迎信息 -->
           <div class="welcome-section">
             <h1>欢迎回来，{{ userInfo?.name }}！</h1>
@@ -70,39 +10,15 @@
           <div class="overview-section">
             <h2>作业概览</h2>
             <div class="overview-cards">
-              <el-card class="overview-card">
+              <el-card 
+                v-for="(card, index) in statsCards" 
+                :key="index" 
+                class="overview-card"
+              >
                 <div class="card-content">
-                  <div class="card-icon el-icon-document"></div>
                   <div class="card-info">
-                    <div class="card-number">{{ totalAssignments }}</div>
-                    <div class="card-label">总作业数</div>
-                  </div>
-                </div>
-              </el-card>
-              <el-card class="overview-card">
-                <div class="card-content">
-                  <div class="card-icon el-icon-check"></div>
-                  <div class="card-info">
-                    <div class="card-number">{{ submittedAssignments }}</div>
-                    <div class="card-label">已提交</div>
-                  </div>
-                </div>
-              </el-card>
-              <el-card class="overview-card">
-                <div class="card-content">
-                  <div class="card-icon el-icon-time"></div>
-                  <div class="card-info">
-                    <div class="card-number">{{ pendingAssignments }}</div>
-                    <div class="card-label">待提交</div>
-                  </div>
-                </div>
-              </el-card>
-              <el-card class="overview-card">
-                <div class="card-content">
-                  <div class="card-icon el-icon-warning"></div>
-                  <div class="card-info">
-                    <div class="card-number">{{ urgentAssignments }}</div>
-                    <div class="card-label">紧急作业</div>
+                    <div class="card-number">{{ card.value }}</div>
+                    <div class="card-label">{{ card.label }}</div>
                   </div>
                 </div>
               </el-card>
@@ -127,44 +43,24 @@
                     <span v-else>-</span>
                   </template>
                 </el-table-column>
-              <el-table-column prop="status" label="状态">
+              <el-table-column prop="status" label="状态" min-width="100">
                     <template v-slot="{ row }">
-                      <div v-if="row">
-                        <el-tag 
-                          v-if="row.status === 'submitted'"
-                          type="success"
-                        >
-                          已提交
-                        </el-tag>
-                        <el-tag 
-                          v-else-if="row.status === 'late'"
-                          type="danger"
-                        >
-                          已逾期
-                        </el-tag>
-                        <el-tag 
-                          v-else-if="row.deadline && isAssignmentExpired(row.deadline)"
-                          type="danger"
-                        >
-                          未提交(逾期)
-                        </el-tag>
-                        <el-tag 
-                          v-else-if="row.deadline && isAssignmentUrgent(row.deadline)"
-                          type="warning"
-                        >
-                          未提交(紧急)
-                        </el-tag>
-                        <el-tag 
-                          v-else
-                          type="info"
-                        >
-                          未提交
-                        </el-tag>
-                      </div>
-                      <el-tag v-else type="info">-</el-tag>
+                      <div>
+                          <el-tag
+                            :type="getStatusTag(row).type"
+                            :key="getStatusTag(row).key"
+                          >
+                            {{ getStatusTag(row).text }}
+                            <template #suffix>
+                                <el-icon v-if="getStatusTag(row).key !== 'default' && getStatusTag(row).key !== 'submitted'">
+                                  <CircleClose />
+                                </el-icon>
+                              </template>
+                          </el-tag>
+                        </div>
                     </template>
                   </el-table-column>
-              <el-table-column label="操作" width="150" fixed="right">
+              <el-table-column label="操作" min-width="120" fixed="right">
                 <template v-slot="{ row }">
                   <div v-if="row && row.id">
                     <el-button 
@@ -188,9 +84,6 @@
               </el-table-column>
             </el-table>
           </div>
-        </el-main>
-      </el-container>
-    </el-container>
   </div>
 </template>
 
@@ -198,12 +91,17 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { CircleClose } from '@element-plus/icons-vue';
 import { getCurrentUser, logoutUser } from '../services/userService';
 import { getAllAssignments, getTimeRemaining, isAssignmentExpired } from '../services/assignmentService';
 import { getSubmissionsByUser } from '../services/submissionService';
+// Layout组件已移除，功能已合并到App.vue中
 
 export default {
   name: 'HomeView',
+  components: {
+    CircleClose
+  },
   setup() {
     const router = useRouter();
     const userInfo = ref(getCurrentUser());
@@ -214,6 +112,26 @@ export default {
     const submittedAssignments = ref(0);
     const pendingAssignments = ref(0);
     const urgentAssignments = ref(0);
+    
+    // 统计卡片数据
+    const statsCards = ref([
+      {
+        label: '总作业数',
+        value: computed(() => totalAssignments.value)
+      },
+      {
+        label: '已提交',
+        value: computed(() => submittedAssignments.value)
+      },
+      {
+        label: '待提交',
+        value: computed(() => pendingAssignments.value)
+      },
+      {
+        label: '紧急作业',
+        value: computed(() => urgentAssignments.value)
+      }
+    ])
     
     // 格式化日期
     const formatDate = (dateString) => {
@@ -226,6 +144,27 @@ export default {
       const timeRemaining = getTimeRemaining(deadline);
       return !timeRemaining.expired && timeRemaining.days === 0 && timeRemaining.hours < 24;
     };
+    
+    // 获取作业状态标签配置的函数
+    const getStatusTag = (row) => {
+      if (!row) {
+        return { type: 'info', text: '-', key: 'empty' };
+      }
+      
+      if (row.status === 'submitted') {
+        return { type: 'success', text: '已提交', key: 'submitted' };
+      }
+      if (row.status === 'late') {
+        return { type: 'danger', text: '已逾期', key: 'late' };
+      }
+      if (row.deadline && isAssignmentExpired(row.deadline)) {
+        return { type: 'danger', text: '未提交(逾期)', key: 'notSubmittedExpired' };
+      }
+      if (row.deadline && isAssignmentUrgent(row.deadline)) {
+        return { type: 'warning', text: '未提交(紧急)', key: 'notSubmittedUrgent' };
+      }
+      return { type: 'info', text: '未提交', key: 'default' };
+    }
     
     // 获取近期作业（带状态）
     const recentAssignments = computed(() => {
@@ -273,24 +212,7 @@ export default {
       }
     };
     
-    // 处理菜单选择
-    const handleMenuSelect = (index) => {
-      switch (index) {
-        case '1':
-          router.push('/home');
-          break;
-        case '2':
-          router.push('/assignments');
-          break;
-        case '3':
-          // 我的提交页面（可以在AssignmentListView中筛选）
-          router.push('/assignments?submitted=true');
-          break;
-        case '4':
-          router.push('/admin');
-          break;
-      }
-    };
+    // 菜单选择功能已在Nav组件中实现
     
     // 跳转到作业详情
     const goToDetail = (id) => {
@@ -337,11 +259,12 @@ export default {
       submittedAssignments,
       pendingAssignments,
       urgentAssignments,
+      statsCards,
       recentAssignments,
       formatDate,
       isAssignmentExpired,
       isAssignmentUrgent,
-      handleMenuSelect,
+      getStatusTag,
       goToDetail,
       goToSubmit,
       goToProfile,
@@ -353,69 +276,12 @@ export default {
 
 <style scoped>
 .home-container {
-  height: 100vh;
-  overflow: scroll;
-}
-
-.header {
-  background-color: #1890ff;
-  color: white;
-  height: 60px;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 100%;
-  padding: 0 20px;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.header-title i {
-  margin-right: 10px;
-}
-
-.header-user {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.aside {
-  background-color: #304156;
-  color: white;
-}
-
-.el-menu-vertical-demo {
-  background-color: #304156;
-  border-right: none;
-}
-
-.el-menu-vertical-demo .el-menu-item {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.el-menu-vertical-demo .el-menu-item:hover {
-  background-color: #1890ff;
-  color: white;
-}
-
-.el-menu-vertical-demo .el-menu-item.is-active {
-  background-color: #1890ff;
-  color: white;
-}
-
-.main {
-  background-color: #f5f7fa;
+  height: calc(100vh - 60px);
+  width: 100%;
   padding: 20px;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .welcome-section {
@@ -461,17 +327,13 @@ export default {
 .card-content {
   display: flex;
   align-items: center;
+  justify-content: center;
+  text-align: center;
   padding: 20px;
 }
 
-.card-icon {
-  font-size: 36px;
-  color: #1890ff;
-  margin-right: 20px;
-}
-
 .card-info {
-  flex: 1;
+  width: 100%;
 }
 
 .card-number {
@@ -496,6 +358,47 @@ export default {
 }
 
 .text-warning {
-  color: #e6a23c;
-}
+    color: #e6a23c;
+  }
+
+  /* 响应式调整 */
+  @media (max-width: 768px) {
+    .content-container {
+      padding: 15px;
+    }
+    
+    .stats-cards {
+      grid-template-columns: 1fr;
+      gap: 15px;
+    }
+    
+    .recent-assignments,
+    .deadline-warnings {
+      padding: 20px 15px;
+    }
+    
+    .deadline-warnings .warning-item {
+      padding: 15px;
+    }
+    
+    .deadline-info {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    
+    .assignment-item {
+      padding: 15px;
+    }
+    
+    .assignment-meta {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    
+    .el-table {
+      overflow-x: auto;
+    }
+  }
 </style>

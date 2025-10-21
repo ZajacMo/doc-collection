@@ -131,12 +131,17 @@ exports.createSubmission = (req, res) => {
     
     const { studentId, assignmentId, description } = req.body;
     
-    // 验证文件命名
-    const validation = validateFileName(req.file.originalname, studentId, assignmentId);
-    if (!validation.valid) {
-      // 删除上传的文件
-      fs.unlinkSync(req.file.path);
-      return res.status(400).json({ message: validation.message });
+    // 获取autoRename参数
+    const { autoRename } = req.body;
+    
+    // 如果不使用自动重命名，则验证文件名格式
+    if (!autoRename) {
+      const validation = validateFileName(req.file.originalname, studentId, assignmentId);
+      if (!validation.valid) {
+        // 删除上传的文件
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ message: validation.message });
+      }
     }
     
     // 检查作业是否存在

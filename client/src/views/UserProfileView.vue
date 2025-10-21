@@ -1,69 +1,6 @@
 <template>
   <div class="user-profile-container">
-    <el-container>
-      <!-- 顶部导航栏 -->
-      <el-header class="header">
-        <div class="header-content">
-          <div class="header-title">
-            <i class="el-icon-document"></i>
-            <span>作业收集系统</span>
-          </div>
-          <div class="header-user">
-            <el-dropdown>
-              <span class="el-dropdown-link">
-                <i class="el-icon-user"></i>
-                {{ userInfo?.name || '用户' }}
-                <i class="el-icon-arrow-down el-icon--right"></i>
-              </span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native="goToProfile">
-                  <i class="el-icon-user-solid"></i>
-                  个人中心
-                </el-dropdown-item>
-                <el-dropdown-item @click.native="handleLogout">
-                  <i class="el-icon-switch-button"></i>
-                  退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-          </div>
-        </div>
-      </el-header>
-
-      <!-- 主内容区域 -->
-      <el-container>
-        <!-- 侧边栏 -->
-        <el-aside width="200px" class="aside">
-          <el-menu 
-            default-active="4"
-            class="el-menu-vertical-demo"
-            @select="handleMenuSelect"
-          >
-            <el-menu-item index="1">
-              <i class="el-icon-s-home"></i>
-              <span slot="title">首页</span>
-            </el-menu-item>
-            <el-menu-item index="2">
-              <i class="el-icon-document-copy"></i>
-              <span slot="title">作业列表</span>
-            </el-menu-item>
-            <el-menu-item index="3">
-              <i class="el-icon-upload2"></i>
-              <span slot="title">我的提交</span>
-            </el-menu-item>
-            <el-menu-item index="4">
-              <i class="el-icon-user-solid"></i>
-              <span slot="title">个人中心</span>
-            </el-menu-item>
-            <el-menu-item index="5" v-if="userInfo?.role === 'admin'">
-              <i class="el-icon-setting"></i>
-              <span slot="title">管理中心</span>
-            </el-menu-item>
-          </el-menu>
-        </el-aside>
-
         <!-- 内容区域 -->
-        <el-main class="main">
           <!-- 页面标题 -->
           <div class="page-header">
             <h2>个人中心</h2>
@@ -71,7 +8,7 @@
 
           <!-- 加载状态 -->
           <div v-if="loading" class="loading-container">
-            <el-loading-spinner></el-loading-spinner>
+            <el-icon class="loading-icon"><Loading /></el-icon>
             <p>加载中...</p>
           </div>
 
@@ -80,7 +17,7 @@
             <el-card class="info-card">
               <div class="info-header">
                 <div class="avatar-container">
-                  <el-avatar size="120" class="user-avatar">
+                  <el-avatar style="width: 120px; height: 120px; line-height: 120px; font-size: 48px;" class="user-avatar">
                     {{ userInfo?.name?.charAt(0) || '用' }}
                   </el-avatar>
                 </div>
@@ -90,14 +27,14 @@
                     <el-tag 
                       v-if="userInfo?.role === 'admin'"
                       type="danger"
-                      size="medium"
+                      size="small"
                     >
                       管理员
                     </el-tag>
                     <el-tag 
                       v-else
                       type="primary"
-                      size="medium"
+                      size="small"
                     >
                       学生
                     </el-tag>
@@ -106,7 +43,7 @@
               </div>
 
               <div class="info-details">
-                <el-descriptions border column="2" :size="'medium'">
+                <el-descriptions border :column="2" :size="'large'">
                   <el-descriptions-item label="学号">
                     {{ userInfo?.studentId || '无' }}
                   </el-descriptions-item>
@@ -129,7 +66,6 @@
               </div>
 
               <div class="action-buttons">
-                <el-button type="primary" @click="showEditDialog">编辑个人信息</el-button>
                 <el-button @click="changePassword">修改密码</el-button>
               </div>
             </el-card>
@@ -186,16 +122,17 @@
               style="width: 100%"
               stripe
               border
+              max-height="600"
             >
-              <el-table-column prop="assignmentTitle" label="作业名称" min-width="200"></el-table-column>
-              <el-table-column prop="submitTime" label="提交时间" width="180">
-                <template slot-scope="scope">
+              <el-table-column prop="assignmentTitle" label="作业名称" min-width="180"></el-table-column>
+              <el-table-column prop="submitTime" label="提交时间" min-width="140">
+                <template #default="scope">
                   {{ formatDate(scope.row.submitTime) }}
                 </template>
               </el-table-column>
-              <el-table-column prop="fileName" label="文件名" min-width="200"></el-table-column>
-              <el-table-column prop="status" label="状态" width="100">
-                <template slot-scope="scope">
+              <el-table-column prop="fileName" label="文件名" min-width="180"></el-table-column>
+              <el-table-column prop="status" label="状态" min-width="80">
+                <template #default="scope">
                   <el-tag 
                     v-if="scope.row.status === 'submitted'"
                     type="success"
@@ -210,8 +147,8 @@
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="120" fixed="right">
-                <template slot-scope="scope">
+              <el-table-column label="操作" min-width="100" fixed="right">
+                <template #default="scope">
                   <el-button 
                     type="primary" 
                     size="small" 
@@ -223,37 +160,8 @@
               </el-table-column>
             </el-table>
           </div>
-        </el-main>
-      </el-container>
-    </el-container>
 
-    <!-- 编辑个人信息对话框 -->
-    <el-dialog 
-      title="编辑个人信息" 
-      :visible.sync="editDialogVisible"
-      width="500px"
-    >
-      <el-form 
-        ref="editFormRef" 
-        :model="editForm" 
-        :rules="editRules" 
-        label-width="100px"
-      >
-        <el-form-item label="学号" prop="studentId">
-          <el-input v-model="editForm.studentId" :disabled="true"></el-input>
-        </el-form-item>
-        <el-form-item label="姓名" prop="name">
-          <el-input v-model="editForm.name"></el-input>
-        </el-form-item>
-        <el-form-item label="班级" prop="class">
-          <el-input v-model="editForm.class"></el-input>
-        </el-form-item>
-      </el-form>
-      <div slot="footer" class="dialog-footer">
-        <el-button @click="editDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleUpdateProfile">确定</el-button>
-      </div>
-    </el-dialog>
+    <!-- 修改密码对话框 -->
 
     <!-- 修改密码对话框 -->
     <el-dialog 
@@ -288,7 +196,8 @@
 <script>
 import { ref, onMounted, computed } from 'vue';
 import { ElMessage } from 'element-plus';
-import { getCurrentUser, logoutUser, updateUser } from '../services/userService';
+import { Loading } from '@element-plus/icons-vue';
+import { getCurrentUser, logoutUser } from '../services/userService';
 import { getAllAssignments } from '../services/assignmentService';
 import { getSubmissionsByUser } from '../services/submissionService';
 
@@ -300,32 +209,13 @@ export default {
     const allSubmissions = ref([]);
     const recentSubmissionsData = ref([]);
     const loading = ref(true);
-    const editDialogVisible = ref(false);
     const passwordDialogVisible = ref(false);
-    const editFormRef = ref(null);
     const passwordFormRef = ref(null);
-    
-    const editForm = ref({
-      studentId: userInfo.value.studentId || '',
-      name: userInfo.value.name || '',
-      class: userInfo.value.class || ''
-    });
     
     const passwordForm = ref({
       currentPassword: '',
       newPassword: '',
       confirmPassword: ''
-    });
-    
-    const editRules = ref({
-      name: [
-        { required: true, message: '请输入姓名', trigger: 'blur' },
-        { min: 2, max: 20, message: '姓名长度在 2 到 20 个字符之间', trigger: 'blur' }
-      ],
-      class: [
-        { required: true, message: '请输入班级', trigger: 'blur' },
-        { min: 2, max: 20, message: '班级长度在 2 到 20 个字符之间', trigger: 'blur' }
-      ]
     });
     
     const passwordRules = ref({
@@ -381,12 +271,7 @@ export default {
         const currentUser = getCurrentUser();
         userInfo.value = currentUser;
         
-        // 初始化编辑表单
-        editForm.value = {
-          studentId: currentUser.studentId || '',
-          name: currentUser.name || '',
-          class: currentUser.class || ''
-        };
+        // 初始化用户数据
         
         // 获取所有作业
         const assignmentsData = await getAllAssignments();
@@ -417,27 +302,6 @@ export default {
       }
     };
     
-    // 处理菜单选择
-    const handleMenuSelect = (index) => {
-      switch (index) {
-        case '1':
-          window.location.href = '/home';
-          break;
-        case '2':
-          window.location.href = '/assignments';
-          break;
-        case '3':
-          window.location.href = '/assignments?status=submitted';
-          break;
-        case '4':
-          window.location.href = '/profile';
-          break;
-        case '5':
-          window.location.href = '/admin';
-          break;
-      }
-    };
-    
     // 退出登录
     const handleLogout = () => {
       logoutUser();
@@ -453,37 +317,7 @@ export default {
       window.location.href = '/profile';
     };
     
-    // 显示编辑个人信息对话框
-    const showEditDialog = () => {
-      editDialogVisible.value = true;
-    };
-    
-    // 处理更新个人信息
-    const handleUpdateProfile = async () => {
-      try {
-        // 表单验证
-        await editFormRef.value.validate();
-        
-        // 调用更新用户接口
-        await updateUser(userInfo.value.studentId, editForm.value);
-        
-        // 更新本地用户信息
-        userInfo.value = {
-          ...userInfo.value,
-          ...editForm.value
-        };
-        
-        // 更新本地存储
-        localStorage.setItem('userInfo', JSON.stringify(userInfo.value));
-        
-        ElMessage.success('个人信息更新成功');
-        editDialogVisible.value = false;
-        
-      } catch (error) {
-        ElMessage.error(error.response?.data?.message || '个人信息更新失败');
-        console.error('个人信息更新失败:', error);
-      }
-    };
+
     
     // 显示修改密码对话框
     const changePassword = () => {
@@ -531,25 +365,18 @@ export default {
       allSubmissions,
       recentSubmissionsData,
       loading,
-      editDialogVisible,
       passwordDialogVisible,
-      editFormRef,
       passwordFormRef,
-      editForm,
       passwordForm,
-      editRules,
       passwordRules,
       totalAssignments,
       submittedAssignments,
       overdueAssignments,
       pendingAssignments,
       formatDate,
-      handleMenuSelect,
       handleLogout,
       goToAssignmentDetail,
       goToProfile,
-      showEditDialog,
-      handleUpdateProfile,
       changePassword,
       handleChangePassword
     };
@@ -559,69 +386,13 @@ export default {
 
 <style scoped>
 .user-profile-container {
-  height: 100vh;
-  overflow: scroll;
-}
-
-.header {
-  background-color: #1890ff;
-  color: white;
-  height: 60px;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 100%;
-  padding: 0 20px;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.header-title i {
-  margin-right: 10px;
-}
-
-.header-user {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.aside {
-  background-color: #304156;
-  color: white;
-}
-
-.el-menu-vertical-demo {
-  background-color: #304156;
-  border-right: none;
-}
-
-.el-menu-vertical-demo .el-menu-item {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.el-menu-vertical-demo .el-menu-item:hover {
-  background-color: #1890ff;
-  color: white;
-}
-
-.el-menu-vertical-demo .el-menu-item.is-active {
-  background-color: #1890ff;
-  color: white;
-}
-
-.main {
   background-color: #f5f7fa;
   padding: 20px;
-  overflow-y: auto;
+  height: calc(100vh - 60px);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
 }
 
 .page-header {
@@ -641,11 +412,79 @@ export default {
   height: 400px;
 }
 
+.loading-icon {
+  font-size: 48px;
+  color: #1890ff;
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-icon {
+  font-size: 48px;
+  color: #1890ff;
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .user-info-card {
   background-color: white;
   padding: 30px;
   border-radius: 8px;
   margin-bottom: 20px;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .info-header {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .avatar-container {
+    margin-right: 0;
+    margin-bottom: 20px;
+  }
+  
+  .user-info-card,
+  .assignment-stats,
+  .recent-submissions {
+    padding: 20px 15px;
+    width: 100%;
+  }
+  
+  .stats-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .action-buttons .el-button {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  
+  .el-table {
+    width: 100%;
+    overflow-x: auto;
+  }
 }
 
 .info-header {

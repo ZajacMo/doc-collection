@@ -30,6 +30,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   response => {
     // 对响应数据做点什么
+    // 对于blob类型的响应，返回完整的response对象
+    if (response.config && response.config.responseType === 'blob') {
+      return response;
+    }
     return response.data;
   },
   error => {

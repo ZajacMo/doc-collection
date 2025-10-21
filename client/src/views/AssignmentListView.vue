@@ -1,68 +1,9 @@
 <template>
   <div class="assignment-list-container">
-    <el-container>
-      <!-- 顶部导航栏 -->
-      <el-header class="header">
-        <div class="header-content">
-          <div class="header-title">
-            <i class="el-icon-document"></i>
-            <span>作业收集系统</span>
-          </div>
-          <div class="header-user">
-            <el-dropdown>
-              <span class="el-dropdown-link">
-                <i class="el-icon-user"></i>
-                {{ userInfo?.name || '用户' }}
-                <i class="el-icon-arrow-down el-icon--right"></i>
-              </span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native="goToProfile">
-                  <i class="el-icon-user-solid"></i>
-                  个人中心
-                </el-dropdown-item>
-                <el-dropdown-item @click.native="handleLogout">
-                  <i class="el-icon-switch-button"></i>
-                  退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-          </div>
-        </div>
-      </el-header>
-
-      <!-- 主内容区域 -->
-      <el-container>
-        <!-- 侧边栏 -->
-        <el-aside width="200px" class="aside">
-          <el-menu 
-            default-active="2"
-            class="el-menu-vertical-demo"
-            @select="handleMenuSelect"
-          >
-            <el-menu-item index="1">
-              <i class="el-icon-s-home"></i>
-              <span slot="title">首页</span>
-            </el-menu-item>
-            <el-menu-item index="2">
-              <i class="el-icon-document-copy"></i>
-              <span slot="title">作业列表</span>
-            </el-menu-item>
-            <el-menu-item index="3">
-              <i class="el-icon-upload2"></i>
-              <span slot="title">我的提交</span>
-            </el-menu-item>
-            <el-menu-item index="4" v-if="userInfo?.role === 'admin'">
-              <i class="el-icon-setting"></i>
-              <span slot="title">管理中心</span>
-            </el-menu-item>
-          </el-menu>
-        </el-aside>
-
         <!-- 内容区域 -->
-        <el-main class="main">
           <!-- 页面标题和操作 -->
           <div class="page-header">
-            <h2>作业列表</h2>
+            <h2>作业</h2>
             <el-button 
               v-if="userInfo?.role === 'admin'" 
               type="primary" 
@@ -111,22 +52,16 @@
               style="width: 100%"
               stripe
               border
+              max-height="600"
             >
-              <el-table-column type="index" label="序号" width="80"></el-table-column>
-              <el-table-column prop="title" label="作业名称" width="300">
-                <template v-slot="{ row }">
-                  <span v-if="row && row.id" @click="goToDetail(row.id)" class="assignment-title-link">
-                    {{ row.title || '-' }}
-                  </span>
-                  <span v-else>-</span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="createTime" label="创建时间" width="180">
+              <el-table-column type="index" label="序号" min-width="60"></el-table-column>
+              <el-table-column prop="title" label="作业名称" min-width="200"></el-table-column>
+              <el-table-column prop="createTime" label="创建时间" min-width="140">
                 <template v-slot="{ row }">
                   {{ row && row.createTime ? formatDate(row.createTime) : '-' }}
                 </template>
               </el-table-column>
-              <el-table-column prop="deadline" label="截止日期" width="180">
+              <el-table-column prop="deadline" label="截止日期" min-width="140">
                 <template v-slot="{ row }">
                   <span v-if="row && row.deadline" :class="{
                     'text-danger': isAssignmentExpired(row.deadline),
@@ -182,7 +117,7 @@
                   <span v-else>-</span>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="180" fixed="right">
+              <el-table-column label="操作" min-width="120" fixed="right">
                 <template v-slot="{ row }">
                   <div v-if="row && row.id">
                     <el-button 
@@ -227,15 +162,12 @@
               @current-change="handleCurrentChange"
             />
           </div>
-        </el-main>
-      </el-container>
-    </el-container>
-
     <!-- 创建作业对话框 -->
     <el-dialog 
       title="创建作业" 
       v-model="createDialogVisible"
-      width="600px"
+      width="90%"
+      :max-width="600"
     >
       <el-form 
         ref="createFormRef" 
@@ -322,6 +254,8 @@ export default {
     const currentPage = ref(1);
     const pageSize = ref(10);
     const createDialogVisible = ref(false);
+    const sidebarVisible = ref(true);
+    const isMobile = ref(window.innerWidth < 768);
     const createFormRef = ref(null);
     const createForm = ref({
       title: '',
@@ -389,30 +323,31 @@ export default {
       }
       
       // 按紧急程度筛选
-      if (urgentFilter.value === 'urgent') {
-        result = result.filter(assignment => 
-          !isAssignmentExpired(assignment.deadline) && isAssignmentUrgent(assignment.deadline)
-        );
-      } else if (urgentFilter.value === 'normal') {
-        result = result.filter(assignment => 
-          isAssignmentExpired(assignment.deadline) || !isAssignmentUrgent(assignment.deadline)
-        );
+      if (urgentFilter.value !== 'all') {
+        if (urgentFilter.value === 'urgent') {
+          result = result.filter(assignment => isAssignmentUrgent(assignment.deadline));
+        } else if (urgentFilter.value === 'normal') {
+          result = result.filter(assignment => !isAssignmentUrgent(assignment.deadline) && !isAssignmentExpired(assignment.deadline));
+        } else if (urgentFilter.value === 'expired') {
+          result = result.filter(assignment => isAssignmentExpired(assignment.deadline));
+        }
       }
       
       // 按关键词搜索
       if (searchKeyword.value) {
         const keyword = searchKeyword.value.toLowerCase();
         result = result.filter(assignment => 
-          assignment.title.toLowerCase().includes(keyword) ||
+          assignment.title.toLowerCase().includes(keyword) || 
           assignment.description.toLowerCase().includes(keyword)
         );
       }
       
-      // 分页处理
-      const start = (currentPage.value - 1) * pageSize.value;
-      const end = start + pageSize.value;
-      return result.slice(start, end);
+      return result;
     });
+    
+    // 计算总数
+    const totalAssignments = computed(() => filteredAssignments.value.length);
+
     
     // 加载数据
     const loadData = async () => {
@@ -452,26 +387,6 @@ export default {
       currentPage.value = current;
     };
     
-    // 处理菜单选择
-    const handleMenuSelect = (index) => {
-      switch (index) {
-        case '1':
-          window.location.href = '/home';
-          break;
-        case '2':
-          window.location.href = '/assignments';
-          break;
-        case '3':
-          // 我的提交页面（可以在AssignmentListView中筛选）
-          statusFilter.value = 'submitted';
-          handleFilterChange();
-          break;
-        case '4':
-          window.location.href = '/admin';
-          break;
-      }
-    };
-    
     // 跳转到作业详情
     const goToDetail = (id) => {
       window.location.href = `/assignments/${id}`;
@@ -492,6 +407,11 @@ export default {
       logoutUser();
     };
     
+    // 窗口大小变化处理（保留以支持响应式）
+    const handleResize = () => {
+      // 响应式调整逻辑已移至布局组件
+    };
+
     // 显示创建作业对话框
     const showCreateDialog = () => {
         createDialogVisible.value = true;
@@ -559,6 +479,7 @@ export default {
     // 组件挂载时加载数据
     onMounted(() => {
       loadData();
+      window.addEventListener('resize', handleResize);
     });
     
     return {
@@ -574,22 +495,24 @@ export default {
       createFormRef,
       createForm,
       createRules,
+      assignmentsWithStatus,
       filteredAssignments,
-      formatDate,
-      isAssignmentExpired,
-      isAssignmentUrgent,
+      totalAssignments,
+      loadData,
       handleFilterChange,
       handleSearch,
       handleSizeChange,
       handleCurrentChange,
-      handleMenuSelect,
       goToDetail,
-      goToSubmit,
-      goToProfile,
-      handleLogout,
-      showCreateDialog,
-      handleCreateAssignment,
-      handleDelete
+    goToSubmit,
+    goToProfile,
+    handleLogout,
+    showCreateDialog,
+    handleCreateAssignment,
+    handleDelete,
+    formatDate,
+    isAssignmentUrgent,
+    isAssignmentExpired
     };
   }
 };
@@ -597,69 +520,44 @@ export default {
 
 <style scoped>
 .assignment-list-container {
-  height: 100vh;
-  overflow: scroll;
-}
-
-.header {
-  background-color: #1890ff;
-  color: white;
-  height: 60px;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 100%;
-  padding: 0 20px;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.header-title i {
-  margin-right: 10px;
-}
-
-.header-user {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.aside {
-  background-color: #304156;
-  color: white;
-}
-
-.el-menu-vertical-demo {
-  background-color: #304156;
-  border-right: none;
-}
-
-.el-menu-vertical-demo .el-menu-item {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.el-menu-vertical-demo .el-menu-item:hover {
-  background-color: #1890ff;
-  color: white;
-}
-
-.el-menu-vertical-demo .el-menu-item.is-active {
-  background-color: #1890ff;
-  color: white;
-}
-
-.main {
-  background-color: #f5f7fa;
+  /* background-color: #f5f7fa; */
   padding: 20px;
-  overflow-y: auto;
+  height: calc(100vh - 60px);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 移动端响应式样式 */
+@media screen and (max-width: 768px) {
+  .mobile-menu-btn {
+    display: flex;
+  }
+  
+  .header-content {
+    justify-content: flex-start;
+  }
+  
+  .main {
+    padding: 10px;
+  }
+  
+  .filter-section,
+  .table-section,
+  .pagination-section {
+    padding: 15px;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .page-header h2 {
+    font-size: 18px;
+  }
 }
 
 .page-header {

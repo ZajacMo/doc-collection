@@ -120,7 +120,20 @@ export default {
   padding: 40px;
   border-radius: 8px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  width: 400px;
+  width: 90%;
+  max-width: 400px;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .login-form-wrapper {
+    padding: 30px 20px;
+  }
+  
+  .login-form-wrapper h2 {
+    font-size: 18px;
+    margin-bottom: 20px;
+  }
 }
 
 .login-form-wrapper h2 {

@@ -1,65 +1,5 @@
 <template>
   <div class="submission-management-container">
-    <el-container>
-      <!-- 顶部导航栏 -->
-      <el-header class="header">
-        <div class="header-content">
-          <div class="header-title">
-            <i class="el-icon-document"></i>
-            <span>作业收集系统</span>
-          </div>
-          <div class="header-user">
-            <el-dropdown>
-              <span class="el-dropdown-link">
-                <i class="el-icon-user"></i>
-                {{ userInfo?.name || '管理员' }}
-                <i class="el-icon-arrow-down el-icon--right"></i>
-              </span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native="goToProfile">
-                  <i class="el-icon-user-solid"></i>
-                  个人中心
-                </el-dropdown-item>
-                <el-dropdown-item @click.native="handleLogout">
-                  <i class="el-icon-switch-button"></i>
-                  退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-          </div>
-        </div>
-      </el-header>
-
-      <!-- 主内容区域 -->
-      <el-container>
-        <!-- 侧边栏 -->
-        <el-aside width="200px" class="aside">
-          <el-menu 
-            default-active="3"
-            class="el-menu-vertical-demo"
-            @select="handleMenuSelect"
-          >
-            <el-menu-item index="1">
-              <i class="el-icon-s-home"></i>
-              <span slot="title">首页</span>
-            </el-menu-item>
-            <el-menu-item index="2">
-              <i class="el-icon-document-copy"></i>
-              <span slot="title">作业列表</span>
-            </el-menu-item>
-            <el-menu-item index="3">
-              <i class="el-icon-upload2"></i>
-              <span slot="title">提交管理</span>
-            </el-menu-item>
-            <el-menu-item index="4">
-              <i class="el-icon-setting"></i>
-              <span slot="title">管理中心</span>
-            </el-menu-item>
-          </el-menu>
-        </el-aside>
-
-        <!-- 内容区域 -->
-        <el-main class="main">
           <!-- 页面标题 -->
           <div class="page-header">
             <h2>提交管理</h2>
@@ -206,16 +146,10 @@
               @selection-change="handleSelectionChange"
             >
               <el-table-column type="selection" width="55"></el-table-column>
-              <el-table-column type="index" label="序号" width="80"></el-table-column>
-              <el-table-column prop="assignmentTitle" label="作业名称" min-width="200" sortable>
-                <template slot-scope="scope">
-                  <el-link type="primary" @click="goToAssignmentDetail(scope.row.assignmentId)">
-                    {{ scope.row.assignmentTitle }}
-                  </el-link>
-                </template>
-              </el-table-column>
-              <el-table-column prop="studentId" label="学号" width="120" sortable></el-table-column>
-              <el-table-column prop="studentName" label="姓名" width="120" sortable></el-table-column>
+              <el-table-column type="index" label="序号" min-width="60"></el-table-column>
+              <el-table-column prop="assignmentTitle" label="作业名称" min-width="180"></el-table-column>
+              <el-table-column prop="studentId" label="学号" min-width="100"></el-table-column>
+              <el-table-column prop="studentName" label="姓名" min-width="80"></el-table-column>
               <el-table-column prop="className" label="班级" width="120" sortable></el-table-column>
               <el-table-column prop="submitTime" label="提交时间" width="180" sortable>
                 <template slot-scope="scope">
@@ -262,7 +196,7 @@
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="180" fixed="right">
+              <el-table-column label="操作" min-width="120" fixed="right">
                 <template slot-scope="scope">
                   <el-button 
                     type="primary" 
@@ -299,10 +233,6 @@
               @current-change="handleCurrentChange"
             />
           </div>
-        </el-main>
-      </el-container>
-    </el-container>
-
     <!-- 提交详情对话框 -->
     <el-dialog 
       title="提交详情" 
@@ -582,23 +512,7 @@ export default {
       }
     };
     
-    // 处理菜单选择
-    const handleMenuSelect = (index) => {
-      switch (index) {
-        case '1':
-          window.location.href = '/home';
-          break;
-        case '2':
-          window.location.href = '/assignments';
-          break;
-        case '3':
-          window.location.href = '/submissions';
-          break;
-        case '4':
-          window.location.href = '/admin';
-          break;
-      }
-    };
+
     
     // 退出登录
     const handleLogout = () => {
@@ -820,7 +734,6 @@ export default {
       formatDate,
       formatFileSize,
       getLateTimeText,
-      handleMenuSelect,
       handleLogout,
       goToProfile,
       goToAssignmentDetail,
@@ -844,69 +757,9 @@ export default {
 
 <style scoped>
 .submission-management-container {
-  height: 100vh;
-  overflow: scroll;
-}
-
-.header {
-  background-color: #1890ff;
-  color: white;
-  height: 60px;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 100%;
-  padding: 0 20px;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.header-title i {
-  margin-right: 10px;
-}
-
-.header-user {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.aside {
-  background-color: #304156;
-  color: white;
-}
-
-.el-menu-vertical-demo {
-  background-color: #304156;
-  border-right: none;
-}
-
-.el-menu-vertical-demo .el-menu-item {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.el-menu-vertical-demo .el-menu-item:hover {
-  background-color: #1890ff;
-  color: white;
-}
-
-.el-menu-vertical-demo .el-menu-item.is-active {
-  background-color: #1890ff;
-  color: white;
-}
-
-.main {
   background-color: #f5f7fa;
   padding: 20px;
-  overflow-y: auto;
+  min-height: calc(100vh - 60px); /* 考虑Header高度 */
 }
 
 .page-header {

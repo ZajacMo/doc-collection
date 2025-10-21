@@ -1,65 +1,6 @@
 <template>
+<!-- 需要在script部分导入这些图标 -->
   <div class="admin-panel-container">
-    <el-container class="full-height-container">
-      <!-- 顶部导航栏 -->
-      <el-header class="header">
-        <div class="header-content">
-          <div class="header-title">
-            <i class="el-icon-document"></i>
-            <span>作业收集系统</span>
-          </div>
-          <div class="header-user">
-            <el-dropdown>
-              <span class="el-dropdown-link">
-                <i class="el-icon-user"></i>
-                {{ userInfo?.name || '管理员' }}
-                <i class="el-icon-arrow-down el-icon--right"></i>
-              </span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native="goToProfile">
-                  <i class="el-icon-user-solid"></i>
-                  个人中心
-                </el-dropdown-item>
-                <el-dropdown-item @click.native="handleLogout">
-                  <i class="el-icon-switch-button"></i>
-                  退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-          </div>
-        </div>
-      </el-header>
-
-      <!-- 主内容区域 -->
-      <el-container>
-        <!-- 侧边栏 -->
-        <el-aside width="200px" class="aside" height="auto">
-          <el-menu 
-            default-active="4"
-            class="el-menu-vertical-demo"
-            @select="handleMenuSelect"
-          >
-            <el-menu-item index="1">
-              <i class="el-icon-s-home"></i>
-              <span slot="title">首页</span>
-            </el-menu-item>
-            <el-menu-item index="2">
-              <i class="el-icon-document-copy"></i>
-              <span slot="title">作业列表</span>
-            </el-menu-item>
-            <el-menu-item index="3">
-              <i class="el-icon-upload2"></i>
-              <span slot="title">提交管理</span>
-            </el-menu-item>
-            <el-menu-item index="4">
-              <i class="el-icon-setting"></i>
-              <span slot="title">管理中心</span>
-            </el-menu-item>
-          </el-menu>
-        </el-aside>
-
-        <!-- 内容区域 -->
-        <el-main class="main">
           <!-- 页面标题 -->
           <div class="page-header">
             <h2>管理中心</h2>
@@ -127,14 +68,14 @@
                     border
                     max-height="400"
                   >
-                    <el-table-column prop="time" label="时间" width="180">
-                      <template slot-scope="scope">
-                        {{ scope && scope.row ? formatDate(scope.row.time) : '-' }}
+                    <el-table-column prop="time" label="时间" min-width="120">
+                      <template #default="{ row }">
+                        {{ row && row.time ? formatDate(row.time) : '-' }}
                       </template>
                     </el-table-column>
-                    <el-table-column prop="user" label="用户" width="120"></el-table-column>
-                    <el-table-column prop="action" label="操作" min-width="300"></el-table-column>
-                    <el-table-column prop="details" label="详情" min-width="200"></el-table-column>
+                    <el-table-column prop="user" label="用户" min-width="100"></el-table-column>
+                    <el-table-column prop="action" label="操作" min-width="200"></el-table-column>
+                    <el-table-column prop="details" label="详情" min-width="150"></el-table-column>
                   </el-table>
                 </div>
               </div>
@@ -180,15 +121,15 @@
                   <el-table-column prop="name" label="姓名" width="120"></el-table-column>
                   <el-table-column prop="class" label="班级" width="120"></el-table-column>
                   <el-table-column prop="role" label="角色" width="100">
-                    <template slot-scope="scope">
+                    <template #default="{ row }">
                       <el-tag 
-                        v-if="scope && scope.row && scope.row.role === 'admin'"
+                        v-if="row && row.role === 'admin'"
                         type="danger"
                       >
                         管理员
                       </el-tag>
                       <el-tag 
-                        v-else-if="scope && scope.row"
+                        v-else-if="row"
                         type="primary"
                       >
                         学生
@@ -197,28 +138,29 @@
                     </template>
                   </el-table-column>
                   <el-table-column prop="createTime" label="创建时间" width="180">
-                    <template slot-scope="scope">
-                      {{ scope && scope.row ? formatDate(scope.row.createTime) : '-' }}
+                    <template #default="{ row }">
+                      {{ row && row.createTime ? formatDate(row.createTime) : '-' }}
                     </template>
                   </el-table-column>
                   <el-table-column label="操作" width="180" fixed="right">
-                    <template slot-scope="scope">
-                      <template v-if="scope && scope.row">
+                    <template #default="{ row }">
+                      <template v-if="row">
                         <el-button 
                           type="primary" 
                           size="small" 
-                          @click="editUser(scope.row)"
+                          @click="editUser(row)"
                         >
                           编辑
                         </el-button>
                         <el-button 
-                          v-if="scope.row.role !== 'admin'"
+                          v-if="row.role !== 'admin'"
                           type="danger" 
                           size="small" 
-                          @click="deleteUser(scope.row.studentId, scope.row.name)"
+                          @click="deleteUser(row.studentId, row.name)"
                         >
                           删除
                         </el-button>
+                        <span v-else>-</span>
                       </template>
                       <span v-else>-</span>
                     </template>
@@ -272,31 +214,31 @@
                   max-height="600"
                 >
                   <el-table-column type="index" label="序号" width="80"></el-table-column>
-                  <el-table-column prop="title" label="作业名称" min-width="200"></el-table-column>
-                  <el-table-column prop="createTime" label="创建时间" width="180">
-                    <template slot-scope="scope">
-                      {{ formatDate(scope.row.createTime) }}
+                  <el-table-column prop="title" label="作业名称" min-width="180"></el-table-column>
+                  <el-table-column prop="createTime" label="创建时间" min-width="140">
+                    <template #default="{ row }">
+                      {{ formatDate(row.createTime) }}
                     </template>
                   </el-table-column>
-                  <el-table-column prop="deadline" label="截止日期" width="180">
-                    <template slot-scope="scope">
-                      {{ formatDate(scope.row.deadline) }}
+                  <el-table-column prop="deadline" label="截止日期" min-width="140">
+                    <template #default="{ row }">
+                      {{ formatDate(row.deadline) }}
                     </template>
                   </el-table-column>
                   <el-table-column prop="creator" label="创建者" width="120"></el-table-column>
                   <el-table-column label="操作" width="180" fixed="right">
-                    <template slot-scope="scope">
+                    <template #default="{ row }">
                       <el-button 
                         type="primary" 
                         size="small" 
-                        @click="goToAssignmentDetail(scope.row.id)"
+                        @click="goToAssignmentDetail(row.id)"
                       >
                         详情
                       </el-button>
                       <el-button 
                         type="danger" 
                         size="small" 
-                        @click="deleteAssignment(scope.row.id, scope.row.title)"
+                        @click="deleteAssignment(row.id, row.title)"
                       >
                         删除
                       </el-button>
@@ -365,44 +307,47 @@
                   max-height="600"
                 >
                   <el-table-column type="index" label="序号" width="80"></el-table-column>
-                  <el-table-column prop="assignmentTitle" label="作业名称" min-width="200"></el-table-column>
-                  <el-table-column prop="studentId" label="学号" width="120"></el-table-column>
-                  <el-table-column prop="studentName" label="姓名" width="120"></el-table-column>
-                  <el-table-column prop="submitTime" label="提交时间" width="180">
-                    <template slot-scope="scope">
-                      {{ formatDate(scope.row.submitTime) }}
+                  <el-table-column prop="assignmentTitle" label="作业名称" min-width="180"></el-table-column>
+                  <el-table-column prop="studentId" label="学号" width="100"></el-table-column>
+                  <el-table-column prop="studentName" label="姓名" width="80"></el-table-column>
+                  <el-table-column prop="submitTime" label="提交时间" min-width="140">
+                    <template #default="{ row }">
+                      {{ row && row.submitTime ? formatDate(row.submitTime) : '-' }}
                     </template>
                   </el-table-column>
-                  <el-table-column prop="fileName" label="文件名" min-width="200"></el-table-column>
-                  <el-table-column prop="status" label="状态" width="100">
-                    <template slot-scope="scope">
+                  <el-table-column prop="fileName" label="文件名" min-width="180"></el-table-column>
+                  <el-table-column prop="status" label="状态" min-width="80">
+                    <template #default="{ row }">
                       <el-tag 
-                        v-if="scope.row.status === 'submitted'"
+                        v-if="row && row.status === 'submitted'"
                         type="success"
                       >
                         已提交
                       </el-tag>
                       <el-tag 
-                        v-if="scope.row.status === 'late'"
+                        v-else-if="row && row.status === 'late'"
                         type="danger"
                       >
                         已逾期
                       </el-tag>
+                      <span v-else>-</span>
                     </template>
                   </el-table-column>
-                  <el-table-column label="操作" width="180" fixed="right">
-                    <template slot-scope="scope">
+                  <el-table-column label="操作" min-width="120" fixed="right">
+                    <template #default="{ row }">
                       <el-button 
                         type="primary" 
                         size="small" 
-                        @click="downloadSubmissionFile(scope.row.fileId, scope.row.fileName)"
+                        :disabled="!row"
+                        @click="row && downloadSubmissionFile(row.id, row.fileName)"
                       >
                         下载
                       </el-button>
                       <el-button 
                         type="danger" 
                         size="small" 
-                        @click="deleteSubmission(scope.row.id)"
+                        :disabled="!row"
+                        @click="row && deleteSubmission(row.id)"
                       >
                         删除
                       </el-button>
@@ -425,9 +370,6 @@
               </div>
             </el-tab-pane>
           </el-tabs>
-        </el-main>
-      </el-container>
-    </el-container>
 
     <!-- 导入用户对话框 -->
     <el-dialog 
@@ -594,15 +536,24 @@
 </template>
 
 <script>
+import { User, SwitchButton } from '@element-plus/icons-vue';
+import UserDropdown from '../components/UserDropdown.vue';
 import { ref, onMounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getCurrentUser, logoutUser, getAllUsers, createUser, updateUser, deleteUser, importUsers } from '../services/userService';
 import { getAllAssignments, createAssignment as createAssignmentAPI, deleteAssignment as deleteAssignmentAPI } from '../services/assignmentService';
-import { getAllSubmissions, deleteSubmission as deleteSubmissionAPI, downloadFile } from '../services/submissionService';
+import { getAllSubmissions, deleteSubmission as deleteSubmissionAPI, downloadFile, handleFileDownload } from '../services/submissionService';
 
 export default {
   name: 'AdminPanelView',
+  components: {
+    User,
+    SwitchButton,
+    UserDropdown
+  },
   setup() {
+    const router = useRouter();
     const userInfo = ref(getCurrentUser());
     const activeTab = ref('overview');
     const allUsers = ref([]);
@@ -864,32 +815,21 @@ export default {
         .slice(0, 15);
     };
     
-    // 处理菜单选择
-    const handleMenuSelect = (index) => {
-      switch (index) {
-        case '1':
-          window.location.href = '/home';
-          break;
-        case '2':
-          window.location.href = '/assignments';
-          break;
-        case '3':
-          activeTab.value = 'submissions';
-          break;
-        case '4':
-          window.location.href = '/admin';
-          break;
-      }
-    };
+    // 菜单选择功能已在Nav组件中实现
     
     // 退出登录
-    const handleLogout = () => {
-      logoutUser();
+    const handleLogout = async () => {
+      try {
+        await logoutUser();
+        router.push('/login');
+      } catch (error) {
+        ElMessage.error('退出登录失败');
+      }
     };
     
     // 跳转到个人中心
     const goToProfile = () => {
-      window.location.href = '/profile';
+      router.push('/profile');
     };
     
     // 跳转到作业详情
@@ -1123,7 +1063,11 @@ export default {
     // 下载提交文件
     const downloadSubmissionFile = async (fileId, fileName) => {
       try {
-        await downloadFile(fileId, fileName);
+        // 调用downloadFile只传递submission ID
+        const response = await downloadFile(fileId);
+        // 使用handleFileDownload处理blob响应并触发下载
+        handleFileDownload(response.data, fileName);
+        ElMessage.success(`文件「${fileName}」下载成功`);
       } catch (error) {
         ElMessage.error('文件下载失败');
         console.error('文件下载失败:', error);
@@ -1165,6 +1109,9 @@ export default {
     });
     
     return {
+      User,
+      SwitchButton,
+      UserDropdown,
       userInfo,
       activeTab,
       allUsers,
@@ -1202,7 +1149,6 @@ export default {
       filteredAssignments,
       filteredSubmissions,
       formatDate,
-      handleMenuSelect,
       handleLogout,
       goToProfile,
       goToAssignmentDetail,
@@ -1237,15 +1183,26 @@ export default {
 
 <style scoped>
 .admin-panel-container {
-  min-height: 100vh;
+  height: calc(100vh - 60px);
+  width: 100%;
+  padding: 20px;
   display: flex;
-  overflow: scroll;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.full-height-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .header {
   background-color: #1890ff;
   color: white;
   height: 60px;
+  flex-shrink: 0;
 }
 
 .header-content {
@@ -1278,39 +1235,6 @@ export default {
   color: white;
 }
 
-.el-menu-vertical-demo {
-  background-color: #304156;
-  border-right: none;
-}
-
-.el-menu-vertical-demo .el-menu-item {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.el-menu-vertical-demo .el-menu-item:hover {
-  background-color: #1890ff;
-  color: white;
-}
-
-.el-menu-vertical-demo .el-menu-item.is-active {
-  background-color: #1890ff;
-  color: white;
-}
-
-.full-height-container {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.full-height-container > .el-main {
-  flex: 1;
-  background-color: #f5f7fa;
-  padding: 20px;
-  overflow-y: auto;
-  min-height: 0;
-}
 
 .page-header {
   margin-bottom: 20px;
@@ -1454,4 +1378,41 @@ export default {
   color: #909399;
   margin-top: 5px;
 }
+
+  /* 响应式调整 */
+  @media (max-width: 768px) {
+    .content-container {
+      padding: 15px;
+    }
+    
+    .dashboard-cards {
+      grid-template-columns: 1fr;
+      gap: 15px;
+    }
+    
+    .card {
+      padding: 20px 15px;
+    }
+    
+    .quick-actions {
+      grid-template-columns: 1fr;
+      gap: 15px;
+    }
+    
+    .quick-actions .el-button {
+      padding: 15px;
+    }
+    
+    .recent-activities {
+      padding: 20px 15px;
+    }
+    
+    .activity-item {
+      padding: 15px 0;
+    }
+    
+    .activity-content {
+      flex: 1;
+    }
+  }
 </style>

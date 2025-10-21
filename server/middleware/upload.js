@@ -6,12 +6,14 @@ const fs = require('fs');
 // 配置存储
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // 根据学生ID和作业ID创建存储目录
-    const { studentId, assignmentId } = req.body;
+    // 根据作业名称创建存储目录
+    const { assignmentName } = req.body;
     let uploadPath = process.env.UPLOAD_DIR || './server/uploads';
     
-    if (studentId && assignmentId) {
-      uploadPath = path.join(uploadPath, assignmentId, studentId);
+    if (assignmentName) {
+      // 清理作业名称中的非法字符，确保可以作为文件夹名
+      const safeAssignmentName = assignmentName.replace(/[\\/:*?"<>|]/g, '_');
+      uploadPath = path.join(uploadPath, safeAssignmentName);
     }
     
     // 确保目录存在
@@ -19,11 +21,19 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    // 使用原始文件名，但添加时间戳以避免覆盖
-    const timestamp = Date.now();
+    const { studentId, studentName, autoRename } = req.body;
     const ext = path.extname(file.originalname);
-    const baseName = path.basename(file.originalname, ext);
-    cb(null, `${baseName}_${timestamp}${ext}`);
+    
+    if (autoRename && studentId && studentName) {
+      // 自动命名为"学号-姓名.扩展名"
+      const newFileName = `${studentId}-${studentName}${ext}`;
+      cb(null, newFileName);
+    } else {
+      // 使用原始文件名，但添加时间戳以避免覆盖
+      const timestamp = Date.now();
+      const baseName = path.basename(file.originalname, ext);
+      cb(null, `${baseName}_${timestamp}${ext}`);
+    }
   }
 });
 

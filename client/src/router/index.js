@@ -15,6 +15,10 @@ import SubmissionManagementView from '../views/SubmissionManagementView.vue';
 const routes = [
   {
     path: '/',
+    redirect: '/login'
+  },
+  {
+    path: '/login',
     name: 'login',
     component: LoginView,
     meta: { requiresAuth: false }
@@ -71,36 +75,41 @@ const router = createRouter({
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
+  // 获取用户信息和token
+  const getUserInfo = () => {
+    try {
+      const userInfoStr = localStorage.getItem('userInfo');
+      return userInfoStr ? JSON.parse(userInfoStr) : null;
+    } catch (error) {
+      console.error('解析用户信息时出错:', error);
+      return null;
+    }
+  };
+  
+  const userInfo = getUserInfo();
+  const token = localStorage.getItem('token');
+  
   // 检查是否需要认证
   if (to.meta.requiresAuth) {
-    try {
-      // 安全地获取用户信息，处理可能的JSON解析错误
-      const userInfoStr = localStorage.getItem('userInfo');
-      const userInfo = userInfoStr ? JSON.parse(userInfoStr) : null;
-      const token = localStorage.getItem('token');
-      
-      // 同时检查userInfo和token是否存在
-      if (!userInfo || !token) {
-        // 未登录，重定向到登录页
-        next('/');
+    // 验证登录状态
+    if (!userInfo || !token) {
+      // 未登录，重定向到登录页
+      console.log('未登录，重定向到登录页');
+      next('/login');
+    } else {
+      // 检查是否需要管理员权限
+      if (to.meta.requiresAdmin && userInfo.role !== 'admin') {
+        // 不是管理员，重定向到首页
+        console.log('需要管理员权限，重定向到首页');
+        next('/home');
       } else {
-        // 检查是否需要管理员权限
-        if (to.meta.requiresAdmin && userInfo.role !== 'admin') {
-          // 不是管理员，重定向到首页
-          next('/home');
-        } else {
-          next();
-        }
+        next();
       }
-    } catch (error) {
-      console.error('检查用户登录状态时出错:', error);
-      // 出错时，视为未登录
-      next('/');
     }
   } else {
     // 如果是访问登录页，而已登录，则重定向到首页
-    if (to.path === '/' && localStorage.getItem('userInfo')) {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+    if (to.path === '/login' && userInfo && token) {
+      console.log('已登录，重定向到相应首页');
       next(userInfo.role === 'admin' ? '/admin' : '/home');
     } else {
       next();

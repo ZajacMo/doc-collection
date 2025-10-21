@@ -1,65 +1,5 @@
 <template>
   <div class="assignment-detail-container">
-    <el-container>
-      <!-- 顶部导航栏 -->
-      <el-header class="header">
-        <div class="header-content">
-          <div class="header-title">
-            <i class="el-icon-document"></i>
-            <span>作业收集系统</span>
-          </div>
-          <div class="header-user">
-            <el-dropdown>
-              <span class="el-dropdown-link">
-                <i class="el-icon-user"></i>
-                {{ userInfo?.name || '用户' }}
-                <i class="el-icon-arrow-down el-icon--right"></i>
-              </span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item @click.native="goToProfile">
-                  <i class="el-icon-user-solid"></i>
-                  个人中心
-                </el-dropdown-item>
-                <el-dropdown-item @click.native="handleLogout">
-                  <i class="el-icon-switch-button"></i>
-                  退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-          </div>
-        </div>
-      </el-header>
-
-      <!-- 主内容区域 -->
-      <el-container>
-        <!-- 侧边栏 -->
-        <el-aside width="200px" class="aside">
-          <el-menu 
-            default-active="2"
-            class="el-menu-vertical-demo"
-            @select="handleMenuSelect"
-          >
-            <el-menu-item index="1">
-              <i class="el-icon-s-home"></i>
-              <span slot="title">首页</span>
-            </el-menu-item>
-            <el-menu-item index="2">
-              <i class="el-icon-document-copy"></i>
-              <span slot="title">作业列表</span>
-            </el-menu-item>
-            <el-menu-item index="3">
-              <i class="el-icon-upload2"></i>
-              <span slot="title">我的提交</span>
-            </el-menu-item>
-            <el-menu-item index="4" v-if="userInfo?.role === 'admin'">
-              <i class="el-icon-setting"></i>
-              <span slot="title">管理中心</span>
-            </el-menu-item>
-          </el-menu>
-        </el-aside>
-
-        <!-- 内容区域 -->
-        <el-main class="main">
           <!-- 返回按钮 -->
           <div class="back-button-container">
             <el-button type="text" @click="goBack">
@@ -236,28 +176,30 @@
               style="width: 100%"
               stripe
               border
+              max-height="600"
             >
-              <el-table-column prop="studentId" label="学号" width="120"></el-table-column>
-              <el-table-column prop="studentName" label="姓名" width="120"></el-table-column>
-              <el-table-column prop="submitTime" label="提交时间" width="180">
+              <el-table-column type="index" label="序号" min-width="60"></el-table-column>
+              <el-table-column prop="studentId" label="学号" min-width="100"></el-table-column>
+              <el-table-column prop="studentName" label="姓名" min-width="80"></el-table-column>
+              <el-table-column prop="submitTime" label="提交时间" min-width="140">
                 <template #default="scope">
                   {{ scope && scope.row ? formatDate(scope.row.submitTime) : '-' }}
                 </template>
               </el-table-column>
-              <el-table-column prop="fileName" label="文件名" min-width="200"></el-table-column>
-              <el-table-column prop="fileSize" label="文件大小" width="100">
+              <el-table-column prop="fileName" label="文件名" min-width="180"></el-table-column>
+              <el-table-column prop="fileSize" label="文件大小" min-width="80">
                 <template #default="scope">
                   {{ scope && scope.row ? formatFileSize(scope.row.fileSize) : '-' }}
                 </template>
               </el-table-column>
-              <el-table-column prop="status" label="状态" width="100">
+              <el-table-column prop="status" label="状态" min-width="80">
                 <template #default="scope">
                   <el-tag v-if="scope && scope.row && scope.row.status === 'submitted'" type="success">已提交</el-tag>
                   <el-tag v-else-if="scope && scope.row && scope.row.status === 'late'" type="danger">已逾期</el-tag>
                   <span v-else>-</span>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="180" fixed="right">
+              <el-table-column label="操作" min-width="120" fixed="right">
                 <template #default="scope">
                   <el-button 
                     v-if="scope && scope.row && scope.row.fileId"
@@ -280,15 +222,12 @@
               </el-table-column>
             </el-table>
           </div>
-        </el-main>
-      </el-container>
-    </el-container>
-
     <!-- 编辑作业对话框 -->
     <el-dialog 
       title="编辑作业" 
       v-model="updateDialogVisible"
-      width="600px"
+      width="90%"
+      :max-width="600"
     >
       <el-form 
         ref="updateFormRef" 
@@ -547,24 +486,6 @@ export default {
       logoutUser();
     };
     
-    // 处理菜单选择
-    const handleMenuSelect = (index) => {
-      switch (index) {
-        case '1':
-          router.push('/home');
-          break;
-        case '2':
-          router.push('/assignments');
-          break;
-        case '3':
-          router.push({ path: '/assignments', query: { status: 'submitted' } });
-          break;
-        case '4':
-          router.push('/admin');
-          break;
-      }
-    };
-    
     // 显示编辑作业对话框
     const showUpdateDialog = () => {
       // 复制当前作业数据到编辑表单，添加空值检查
@@ -678,7 +599,6 @@ export default {
       goToSubmit,
       goToProfile,
       handleLogout,
-      handleMenuSelect,
       showUpdateDialog,
       handleUpdateAssignment,
       downloadFile,
@@ -691,69 +611,9 @@ export default {
 
 <style scoped>
 .assignment-detail-container {
-  height: 100vh;
-  overflow: scroll;
-}
-
-.header {
-  background-color: #1890ff;
-  color: white;
-  height: 60px;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 100%;
-  padding: 0 20px;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.header-title i {
-  margin-right: 10px;
-}
-
-.header-user {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.aside {
-  background-color: #304156;
-  color: white;
-}
-
-.el-menu-vertical-demo {
-  background-color: #304156;
-  border-right: none;
-}
-
-.el-menu-vertical-demo .el-menu-item {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.el-menu-vertical-demo .el-menu-item:hover {
-  background-color: #1890ff;
-  color: white;
-}
-
-.el-menu-vertical-demo .el-menu-item.is-active {
-  background-color: #1890ff;
-  color: white;
-}
-
-.main {
   background-color: #f5f7fa;
   padding: 20px;
-  overflow-y: auto;
+  min-height: calc(100vh - 60px); /* 考虑Header高度 */
 }
 
 .back-button-container {
@@ -965,5 +825,47 @@ export default {
   font-size: 12px;
   color: #909399;
   margin-top: 5px;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .assignment-detail-card,
+  .submission-stats,
+  .submission-list {
+    padding: 20px 15px;
+  }
+  
+  .assignment-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .stats-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .action-buttons .el-button {
+    width: 100%;
+  }
+  
+  .el-table {
+    overflow-x: auto;
+  }
+  
+  .naming-rule-container {
+    padding: 10px;
+  }
+  
+  .naming-rule-container pre {
+    font-size: 14px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
 }
 </style>
