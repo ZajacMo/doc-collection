@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getCurrentUser, logoutUser } from './services/userService'
 import Header from './components/Header.vue'
@@ -13,9 +13,9 @@ const userInfo = ref(null)
 // 计算当前激活的菜单项
 const computedActiveMenuItem = () => {
   const path = route.path
-  if (path.includes('/admin')) return '4'
+  if (path.includes('/admin')) return '3' // 管理菜单项索引变更
   if (path.includes('/assignments')) return '2'
-  if (path.includes('/profile')) return '3'
+  if (path.includes('/profile')) return '1' // 个人中心已合并到首页
   return '1'
 }
 
@@ -29,19 +29,16 @@ const handleMenuSelect = (index) => {
       router.push('/assignments')
       break
     case '3':
-      router.push('/profile')
-      break
-    case '4':
-      router.push('/admin')
+      router.push('/admin') // 管理菜单项索引变更
       break
     default:
       break
   }
 }
 
-// 处理跳转到个人中心
+// 处理跳转到个人中心（已合并到首页）
 const handleGoToProfile = () => {
-  router.push('/profile')
+  router.push('/home')
 }
 
 // 处理退出登录
@@ -56,9 +53,18 @@ const handleLogout = async () => {
   }
 }
 
+// 更新用户信息的方法
+const updateUserInfo = (newUserInfo) => {
+  userInfo.value = newUserInfo;
+};
+
 onMounted(() => {
   // 只获取用户信息，路由守卫已在router/index.js中配置
   userInfo.value = getCurrentUser()
+  
+  // 提供用户信息和更新方法给子组件
+  provide('userInfo', userInfo);
+  provide('updateUserInfo', updateUserInfo);
 })
 </script>
 

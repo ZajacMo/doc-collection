@@ -8,6 +8,7 @@
         :rules="loginRules" 
         label-width="80px"
         class="login-form"
+        @submit.prevent
       >
         <el-form-item label="学号" prop="studentId">
           <el-input 
@@ -44,10 +45,10 @@
 </template>
 
 <script>
-import { ref } from 'vue';
+import { ref, inject } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { loginUser } from '../services/userService';
-import router from '../router';
+import { loginUser, getCurrentUser } from '../services/userService';
 
 export default {
   name: 'LoginView',
@@ -58,6 +59,10 @@ export default {
       studentId: '',
       password: ''
     });
+    const router = useRouter();
+    
+    // 注入父组件提供的updateUserInfo方法
+    const updateUserInfo = inject('updateUserInfo', () => {});
     
     const loginRules = ref({
       studentId: [
@@ -76,14 +81,23 @@ export default {
         await loginFormRef.value.validate();
         
         loading.value = true;
-        
+
         // 调用登录接口
         const result = await loginUser(loginForm.value.studentId, loginForm.value.password);
-        
+        // console.log(result);
+
         ElMessage.success('登录成功');
+        console.log(result);
+        
+        // 获取并更新用户状态
+        const userInfo = await getCurrentUser();
+        if (updateUserInfo) {
+          updateUserInfo(userInfo);
+        }
         
         // 根据用户角色跳转到不同页面
-        if (result.role === 'admin') {
+        // 角色信息在result.user对象中
+        if (result.user && result.user.role === 'admin') {
           router.push('/admin');
         } else {
           router.push('/home');

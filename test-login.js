@@ -10,7 +10,7 @@ const options = {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(JSON.stringify({
       studentId: 'admin',
-      password: '123456'
+      password: 'admin'
     }))
   }
 };
@@ -30,6 +30,6 @@ req.on('error', (error) => {
 // 写入请求体
 req.write(JSON.stringify({
   studentId: 'admin',
-  password: '123456'
+  password: 'admin'
 }));
 req.end();

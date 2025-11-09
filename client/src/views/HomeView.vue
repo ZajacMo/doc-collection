@@ -1,89 +1,139 @@
 <template>
   <div class="home-container">
-          <!-- 欢迎信息 -->
-          <div class="welcome-section">
-            <h1>欢迎回来，{{ userInfo?.name }}！</h1>
-            <p class="welcome-subtitle">今天是 {{ currentDate }}</p>
-          </div>
+    <!-- 欢迎信息 -->
+    <div class="welcome-section">
+      <h1>欢迎回来！</h1>
+      <p class="welcome-subtitle">今天是 {{ currentDate }}</p>
+    </div>
 
-          <!-- 作业概览 -->
-          <div class="overview-section">
-            <h2>作业概览</h2>
-            <div class="overview-cards">
-              <el-card 
-                v-for="(card, index) in statsCards" 
-                :key="index" 
-                class="overview-card"
-              >
-                <div class="card-content">
-                  <div class="card-info">
-                    <div class="card-number">{{ card.value }}</div>
-                    <div class="card-label">{{ card.label }}</div>
-                  </div>
-                </div>
-              </el-card>
+
+    <!-- 作业概览 -->
+    <div class="overview-section">
+      <h2>作业概览</h2>
+      <div class="overview-cards">
+        <el-card 
+          v-for="(card, index) in statsCards" 
+          :key="index" 
+          class="overview-card"
+        >
+          <div class="card-content">
+            <div class="card-info">
+              <div class="card-number">{{ card.value }}</div>
+              <div class="card-label">{{ card.label }}</div>
             </div>
           </div>
+        </el-card>
+      </div>
+    </div>
 
-          <!-- 近期作业 -->
-          <div class="recent-assignments-section">
-            <h2>近期作业</h2>
-            <el-table :data="recentAssignments" style="width: 100%">
-              <el-table-column prop="title" label="作业名称" width="300"></el-table-column>
-              <el-table-column prop="deadline" label="截止日期">
-                  <template v-slot="{ row }">
-                    <div v-if="row && row.deadline">
-                      <span :class="{
-                        'text-danger': row.deadline && isAssignmentExpired(row.deadline),
-                        'text-warning': row.deadline && isAssignmentUrgent(row.deadline)
-                      }">
-                        {{ row.deadline && formatDate(row.deadline) }}
-                      </span>
-                    </div>
-                    <span v-else>-</span>
-                  </template>
-                </el-table-column>
-              <el-table-column prop="status" label="状态" min-width="100">
-                    <template v-slot="{ row }">
-                      <div>
-                          <el-tag
-                            :type="getStatusTag(row).type"
-                            :key="getStatusTag(row).key"
-                          >
-                            {{ getStatusTag(row).text }}
-                            <template #suffix>
-                                <el-icon v-if="getStatusTag(row).key !== 'default' && getStatusTag(row).key !== 'submitted'">
-                                  <CircleClose />
-                                </el-icon>
-                              </template>
-                          </el-tag>
-                        </div>
-                    </template>
-                  </el-table-column>
-              <el-table-column label="操作" min-width="120" fixed="right">
-                <template v-slot="{ row }">
-                  <div v-if="row && row.id">
-                    <el-button 
-                      type="primary" 
-                      size="small" 
-                      @click="goToDetail(row.id)"
+    <!-- 近期作业 -->
+    <div class="recent-assignments-section">
+      <h2>近期作业</h2>
+      <el-table :data="recentAssignments" style="width: 100%">
+        <el-table-column prop="title" label="作业名称" width="300"></el-table-column>
+        <el-table-column prop="deadline" label="截止日期">
+            <template v-slot="{ row }">
+              <div v-if="row && row.deadline">
+                <span :class="{
+                  'text-danger': row.deadline && isAssignmentExpired(row.deadline),
+                  'text-warning': row.deadline && isAssignmentUrgent(row.deadline)
+                }">
+                  {{ row.deadline && formatDate(row.deadline) }}
+                </span>
+              </div>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+        <el-table-column prop="status" label="状态" min-width="100">
+              <template v-slot="{ row }">
+                <div>
+                    <el-tag
+                      :type="getStatusTag(row).type"
+                      :key="getStatusTag(row).key"
                     >
-                      详情
-                    </el-button>
-                    <el-button 
-                      v-if="row.deadline && !isAssignmentExpired(row.deadline) && row.status !== 'submitted'"
-                      type="success" 
-                      size="small" 
-                      @click="goToSubmit(row.id)"
-                    >
-                      提交
-                    </el-button>
+                      {{ getStatusTag(row).text }}
+                      <template #suffix>
+                          <el-icon v-if="getStatusTag(row).key !== 'default' && getStatusTag(row).key !== 'submitted'">
+                            <CircleClose />
+                          </el-icon>
+                        </template>
+                    </el-tag>
                   </div>
-                  <span v-else>-</span>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
+              </template>
+            </el-table-column>
+        <el-table-column label="操作" min-width="120" fixed="right">
+          <template v-slot="{ row }">
+            <div v-if="row && row.id">
+              <el-button 
+                type="primary" 
+                size="small" 
+                @click="goToDetail(row.id)"
+              >
+                详情
+              </el-button>
+              <el-button 
+                v-if="row.deadline && !isAssignmentExpired(row.deadline) && row.status !== 'submitted'"
+                type="success" 
+                size="small" 
+                @click="goToSubmit(row.id)"
+              >
+                提交
+              </el-button>
+            </div>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
+
+    <!-- 最近提交记录 -->
+    <div class="recent-submissions">
+      <h3>最近提交记录</h3>
+      <el-table 
+        :data="recentSubmissionsData" 
+        style="width: 100%"
+        stripe
+        border
+        max-height="600"
+      >
+        <el-table-column prop="assignmentTitle" label="作业名称" min-width="180"></el-table-column>
+        <el-table-column prop="submitTime" label="提交时间" min-width="140">
+          <template #default="scope">
+            {{ formatDate(scope.row.submitTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="fileName" label="文件名" min-width="180"></el-table-column>
+        <el-table-column prop="status" label="状态" min-width="80">
+          <template #default="scope">
+            <el-tag 
+              v-if="scope.row.status === 'submitted'"
+              type="success"
+            >
+              已提交
+            </el-tag>
+            <el-tag 
+              v-if="scope.row.status === 'late'"
+              type="danger"
+            >
+              已逾期
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" min-width="100" fixed="right">
+          <template #default="scope">
+            <el-button 
+              type="primary" 
+              size="small" 
+              @click="goToDetail(scope.row.assignmentId)"
+            >
+              查看
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
+
+
   </div>
 </template>
 
@@ -91,16 +141,17 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { CircleClose } from '@element-plus/icons-vue';
+import { CircleClose, Loading } from '@element-plus/icons-vue';
 import { getCurrentUser, logoutUser } from '../services/userService';
 import { getAllAssignments, getTimeRemaining, isAssignmentExpired } from '../services/assignmentService';
 import { getSubmissionsByUser } from '../services/submissionService';
-// Layout组件已移除，功能已合并到App.vue中
 
+// 合并HomeView和UserProfileView组件
 export default {
   name: 'HomeView',
   components: {
-    CircleClose
+    CircleClose,
+    Loading
   },
   setup() {
     const router = useRouter();
@@ -108,10 +159,14 @@ export default {
     const currentDate = ref('');
     const assignments = ref([]);
     const submissions = ref([]);
+    const recentSubmissionsData = ref([]); // 新增：最近提交记录
     const totalAssignments = ref(0);
     const submittedAssignments = ref(0);
     const pendingAssignments = ref(0);
     const urgentAssignments = ref(0);
+    const overdueAssignments = ref(0); // 新增：逾期作业数量
+    
+
     
     // 统计卡片数据
     const statsCards = ref([
@@ -130,11 +185,16 @@ export default {
       {
         label: '紧急作业',
         value: computed(() => urgentAssignments.value)
+      },
+      {
+        label: '已逾期',
+        value: computed(() => overdueAssignments.value)
       }
     ])
     
     // 格式化日期
     const formatDate = (dateString) => {
+      if (!dateString) return '';
       const date = new Date(dateString);
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     };
@@ -178,12 +238,16 @@ export default {
       });
     });
     
-    // 加载数据
+    // 加载数据 - 合并了两个组件的数据加载逻辑
     const loadData = async () => {
       try {
         // 获取当前日期
         const now = new Date();
         currentDate.value = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+        
+        // 获取当前用户信息
+        const currentUser = getCurrentUser();
+        userInfo.value = currentUser;
         
         // 获取作业列表
         const assignmentsData = await getAllAssignments();
@@ -191,7 +255,8 @@ export default {
         totalAssignments.value = assignments.value.length;
         
         // 获取用户提交记录
-        const submissionsData = await getSubmissionsByUser(userInfo.value.studentId);
+        const studentId = currentUser.user?.studentId || currentUser.studentId;
+        const submissionsData = await getSubmissionsByUser(studentId);
         submissions.value = submissionsData || [];
         submittedAssignments.value = submissions.value.length;
         
@@ -206,13 +271,29 @@ export default {
           return !isSubmitted && !isAssignmentExpired(assignment.deadline) && isAssignmentUrgent(assignment.deadline);
         }).length;
         
+        // 计算逾期作业数量
+        overdueAssignments.value = submissions.value.filter(s => s.status === 'late').length;
+        
+        // 获取最近的5条提交记录
+        recentSubmissionsData.value = [...submissions.value]
+          .sort((a, b) => new Date(b.submitTime) - new Date(a.submitTime))
+          .slice(0, 5)
+          .map(submission => {
+            // 查找对应的作业信息
+            const assignment = assignments.value.find(a => a.id === submission.assignmentId);
+            return {
+              ...submission,
+              assignmentTitle: assignment?.title || '未知作业'
+            };
+          });
+
+          console.log(userInfo)
+          
       } catch (error) {
         ElMessage.error('加载数据失败');
         console.error('加载数据失败:', error);
       }
     };
-    
-    // 菜单选择功能已在Nav组件中实现
     
     // 跳转到作业详情
     const goToDetail = (id) => {
@@ -225,9 +306,9 @@ export default {
       router.push(`/submit/${id}`);
     };
     
-    // 跳转到个人中心
+    // 跳转到个人中心 - 重定向到首页（因为个人中心内容已合并到首页）
     const goToProfile = () => {
-      router.push('/profile');
+      router.push('/home');
     };
     
     // 退出登录
@@ -245,6 +326,8 @@ export default {
       });
     };
     
+
+    
     // 组件挂载时加载数据
     onMounted(() => {
       loadData();
@@ -255,10 +338,12 @@ export default {
       currentDate,
       assignments,
       submissions,
+      recentSubmissionsData,
       totalAssignments,
       submittedAssignments,
       pendingAssignments,
       urgentAssignments,
+      overdueAssignments,
       statsCards,
       recentAssignments,
       formatDate,
@@ -271,17 +356,18 @@ export default {
       handleLogout
     };
   }
-};
+}
 </script>
 
 <style scoped>
 .home-container {
-  height: calc(100vh - 60px);
-  width: 100%;
+  background-color: #f5f7fa;
   padding: 20px;
+  min-height: calc(100vh - 60px);
+  width: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .welcome-section {
@@ -298,6 +384,8 @@ export default {
   font-size: 14px;
 }
 
+
+/* 作业概览样式 */
 .overview-section {
   margin-bottom: 30px;
 }
@@ -348,57 +436,65 @@ export default {
   margin-top: 5px;
 }
 
+/* 近期作业样式 */
+.recent-assignments-section {
+  background-color: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
 .recent-assignments-section h2 {
   color: #303133;
   margin-bottom: 20px;
 }
 
+/* 最近提交记录样式 */
+.recent-submissions {
+  background-color: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.recent-submissions h3 {
+  color: #303133;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+/* 状态文本样式 */
 .text-danger {
   color: #f56c6c;
 }
 
 .text-warning {
-    color: #e6a23c;
-  }
+  color: #e6a23c;
+}
 
-  /* 响应式调整 */
-  @media (max-width: 768px) {
-    .content-container {
-      padding: 15px;
-    }
-    
-    .stats-cards {
-      grid-template-columns: 1fr;
-      gap: 15px;
-    }
-    
-    .recent-assignments,
-    .deadline-warnings {
-      padding: 20px 15px;
-    }
-    
-    .deadline-warnings .warning-item {
-      padding: 15px;
-    }
-    
-    .deadline-info {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 10px;
-    }
-    
-    .assignment-item {
-      padding: 15px;
-    }
-    
-    .assignment-meta {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
-    }
-    
-    .el-table {
-      overflow-x: auto;
-    }
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .home-container {
+    padding: 15px;
   }
+  
+
+  .recent-assignments-section,
+  .recent-submissions {
+    padding: 20px 15px;
+    width: 100%;
+  }
+  
+  .overview-cards {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+
+  
+  .el-table {
+    width: 100%;
+    overflow-x: auto;
+  }
+}
 </style>

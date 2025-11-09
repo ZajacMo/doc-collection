@@ -31,15 +31,15 @@ const testLogin = (studentId, password) => {
         try {
           // 解析JSON响应
           const result = JSON.parse(responseData);
-          console.log(`登录用户: ${studentId}, 状态码: ${res.statusCode}`);
-          console.log('返回数据:', result);
+          // console.log(`登录用户: ${studentId}, 状态码: ${res.statusCode}`);
+          // console.log('返回数据:', result);
           
           // 模拟前端代码的处理逻辑
           if (res.statusCode === 200) {
             // 模拟响应拦截器返回response.data
-            console.log('模拟响应拦截器处理后的数据:', result);
-            console.log('token:', result.token);
-            console.log('用户信息:', result);
+            // console.log('模拟响应拦截器处理后的数据:', result);
+            // console.log('token:', result.token);
+            // console.log('用户信息:', result);
             resolve(result);
           } else {
             reject(new Error(`登录失败: ${result.message}`));

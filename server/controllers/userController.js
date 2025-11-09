@@ -184,7 +184,9 @@ exports.loginUser = async (req, res) => {
     
     // 查找用户
     const user = await getOne('SELECT * FROM users WHERE studentId = ?', [studentId]);
-    
+    // console.log('查询到的用户:', user);
+    // await new Promise(resolve => setTimeout(resolve, 5000));
+
     if (!user) {
       return res.status(401).json({ message: '用户不存在' });
     }
@@ -192,6 +194,7 @@ exports.loginUser = async (req, res) => {
     // 这里简化处理，实际应该使用密码哈希验证
     // 暂时使用学号作为密码
     if (password === user.studentId) {
+
       res.json({
         message: '登录成功',
         user: {
@@ -205,6 +208,7 @@ exports.loginUser = async (req, res) => {
       res.status(401).json({ message: '密码错误' });
     }
   } catch (error) {
+    console.error('登录错误:', error);
     res.status(500).json({ message: '登录失败', error: error.message });
   }
 };

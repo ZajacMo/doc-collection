@@ -1,5 +1,5 @@
 <script setup>
-import { House } from '@element-plus/icons-vue'
+import { House, DocumentCopy, Setting, Management } from '@element-plus/icons-vue'
 
 // defineProps 和 defineEmits 是 Vue 3 编译器宏，不需要导入
 
@@ -39,11 +39,7 @@ const handleMenuSelect = (index) => {
         <el-icon><DocumentCopy /></el-icon>
         <span slot="title">作业</span>
       </el-menu-item>
-      <el-menu-item index="3">
-        <el-icon><Setting /></el-icon>
-        <span slot="title">我的</span>
-      </el-menu-item>
-      <el-menu-item index="4" v-if="userInfo?.role === 'admin'">
+      <el-menu-item index="3" v-show="userInfo?.user?.role === 'admin' || userInfo?.role === 'admin'">
         <el-icon><Management /></el-icon>
         <span slot="title">管理</span>
       </el-menu-item>

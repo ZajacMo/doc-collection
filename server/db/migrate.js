@@ -4,6 +4,32 @@ const path = require('path');
 const XLSX = require('xlsx');
 const { initDatabase, getDb, closeDb } = require('./db');
 
+// 包装db.run为Promise版本
+const runQuery = (db, sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(this);
+      }
+    });
+  });
+};
+
+// 包装db.all为Promise版本
+const runAllQuery = (db, sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+};
+
 // 确保迁移脚本使用与应用相同的数据库连接
 
 /**
@@ -13,18 +39,18 @@ const createTables = async () => {
   const db = getDb();
   
   // 禁用外键检查以避免创建顺序问题
-  await db.run('PRAGMA foreign_keys = OFF');
+  await runQuery(db, 'PRAGMA foreign_keys = OFF');
   
   try {
     // 删除已存在的表（按依赖关系的逆序）
-    await db.run('DROP TABLE IF EXISTS submissions');
-    await db.run('DROP TABLE IF EXISTS assignments');
-    await db.run('DROP TABLE IF EXISTS users');
+    await runQuery(db, 'DROP TABLE IF EXISTS submissions');
+    await runQuery(db, 'DROP TABLE IF EXISTS assignments');
+    await runQuery(db, 'DROP TABLE IF EXISTS users');
     
     console.log('旧表删除成功');
     
     // 创建用户表
-    await db.run(`
+    await runQuery(db, `
       CREATE TABLE users (
         id TEXT PRIMARY KEY,
         studentId TEXT NOT NULL UNIQUE,
@@ -38,7 +64,7 @@ const createTables = async () => {
     `);
     
     // 创建作业表
-    await db.run(`
+    await runQuery(db, `
       CREATE TABLE assignments (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
@@ -52,7 +78,7 @@ const createTables = async () => {
     `);
     
     // 创建提交表
-    await db.run(`
+    await runQuery(db, `
       CREATE TABLE submissions (
         id TEXT PRIMARY KEY,
         studentId TEXT NOT NULL,
@@ -72,7 +98,7 @@ const createTables = async () => {
     throw error;
   } finally {
     // 重新启用外键检查
-    await db.run('PRAGMA foreign_keys = ON');
+    await runQuery(db, 'PRAGMA foreign_keys = ON');
   }
 };
 
@@ -81,7 +107,8 @@ const createTables = async () => {
  */
 const importUsersFromExcel = async () => {
   const db = getDb();
-  const excelPath = path.join(__dirname, '../../名单.xls');
+  // 现在从server/data目录读取Excel文件
+  const excelPath = path.join(__dirname, '../data/名单.xls');
   
   try {
     // 插入默认用户
@@ -93,7 +120,8 @@ const importUsersFromExcel = async () => {
     ];
     
     for (const user of defaultUsers) {
-      await db.run(
+      await runQuery(
+        db,
         `INSERT OR IGNORE INTO users (id, studentId, name, role) VALUES (?, ?, ?, ?)`,
         [user.id, user.studentId, user.name, user.role]
       );
@@ -110,7 +138,8 @@ const importUsersFromExcel = async () => {
         const studentId = row['学号'] || `student${defaultUsers.length + index + 1}`;
         const name = row['姓名'] || `User${defaultUsers.length + index + 1}`;
         
-        await db.run(
+        await runQuery(
+          db,
           `INSERT OR IGNORE INTO users (id, studentId, name, role, className, major, email) VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [userId, studentId, name, 'student', row['班级'] || '', row['专业'] || '', row['邮箱'] || '']
         );

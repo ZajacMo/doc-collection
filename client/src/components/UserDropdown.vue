@@ -1,16 +1,16 @@
-<template slot-scope="scope">
+<template>
   <el-dropdown>
     <span class="el-dropdown-link">
       <i class="el-icon-user"></i>
-      {{ userInfo?.name || '管理员' }}
+      {{ userInfo?.user?.name || userInfo?.name || '管理员' }}
       <i class="el-icon-arrow-down el-icon--right"></i>
     </span>
     <template #dropdown>
       <el-dropdown-menu>
-        <el-dropdown-item @click.native="onGoToProfile">
+        <el-dropdown-item @click="onGoToProfile">
           个人中心
         </el-dropdown-item>
-        <el-dropdown-item @click.native="onLogout">
+        <el-dropdown-item @click="onLogout">
             退出登录
         </el-dropdown-item>
       </el-dropdown-menu>
