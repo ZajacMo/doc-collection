@@ -2,8 +2,8 @@
   <!-- 导入用户对话框 -->
   <el-dialog 
     title="导入用户" 
-    :visible.sync="importDialogVisible"
-    width="600px"
+    v-model="localImportDialogVisible"
+    width="500px"
   >
     <el-upload
       class="upload-excel"
@@ -31,7 +31,7 @@
   <!-- 添加用户对话框 -->
   <el-dialog 
     title="添加用户" 
-    :visible.sync="addDialogVisible"
+    v-model="localAddDialogVisible"
     width="500px"
   >
     <el-form 
@@ -65,7 +65,7 @@
   <!-- 编辑用户对话框 -->
   <el-dialog 
     title="编辑用户" 
-    :visible.sync="editDialogVisible"
+    v-model="localEditDialogVisible"
     width="500px"
   >
     <el-form 
@@ -96,77 +96,20 @@
     </div>
   </el-dialog>
 
-  <!-- 创建作业对话框 -->
-  <el-dialog 
-    title="创建作业" 
-    :visible.sync="createAssignmentDialogVisible"
-    width="600px"
-  >
-    <el-form 
-      ref="createAssignmentFormRef" 
-      :model="createAssignmentForm" 
-      :rules="createAssignmentRules" 
-      label-width="100px"
-    >
-      <el-form-item label="作业名称" prop="title">
-        <el-input v-model="createAssignmentForm.title"></el-input>
-      </el-form-item>
-      <el-form-item label="作业描述" prop="description">
-        <el-input 
-          v-model="createAssignmentForm.description" 
-          type="textarea" 
-          placeholder="请输入作业描述"
-          :rows="4"
-        ></el-input>
-      </el-form-item>
-      <el-form-item label="截止日期" prop="deadline">
-        <el-date-picker
-          v-model="createAssignmentForm.deadline"
-          type="datetime"
-          placeholder="选择截止日期时间"
-          style="width: 100%"
-        ></el-date-picker>
-      </el-form-item>
-      <el-form-item label="文件命名规则" prop="namingRule">
-        <el-input 
-          v-model="createAssignmentForm.namingRule" 
-          placeholder="例如：{学号}_{姓名}_{作业名称}_{提交日期}"
-        ></el-input>
-        <div class="form-tip">支持的变量：{学号}, {姓名}, {作业名称}, {提交日期}</div>
-      </el-form-item>
-      <el-form-item label="允许的文件类型" prop="fileTypes">
-        <el-select 
-          v-model="createAssignmentForm.fileTypes" 
-          multiple 
-          placeholder="选择允许的文件类型"
-        >
-          <el-option label="PDF" value="pdf"></el-option>
-          <el-option label="Word文档" value="doc"></el-option>
-          <el-option label="Word文档" value="docx"></el-option>
-          <el-option label="Excel表格" value="xls"></el-option>
-          <el-option label="Excel表格" value="xlsx"></el-option>
-          <el-option label="PPT演示" value="ppt"></el-option>
-          <el-option label="PPT演示" value="pptx"></el-option>
-          <el-option label="ZIP压缩" value="zip"></el-option>
-          <el-option label="RAR压缩" value="rar"></el-option>
-          <el-option label="图片" value="jpg"></el-option>
-          <el-option label="图片" value="jpeg"></el-option>
-          <el-option label="图片" value="png"></el-option>
-        </el-select>
-      </el-form-item>
-    </el-form>
-    <div slot="footer" class="dialog-footer">
-      <el-button @click="closeCreateAssignmentDialog">取消</el-button>
-      <el-button type="primary" @click="handleCreateAssignment">确定</el-button>
-    </div>
-  </el-dialog>
+  <!-- 复用的作业创建对话框组件 -->
+  <AssignmentFormDialog
+    v-model:visible="localCreateAssignmentDialogVisible"
+    dialog-type="create"
+    @submit="handleCreateAssignment"
+  />
 </template>
 
 <script>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { createUser, updateUser } from '../../services/userService';
 import { createAssignment } from '../../services/assignmentService';
+import AssignmentFormDialog from '../../components/AssignmentFormDialog.vue';
 
 /**
  * 对话框组件
@@ -174,6 +117,9 @@ import { createAssignment } from '../../services/assignmentService';
  */
 export default {
   name: 'DialogComponents',
+  components: {
+    AssignmentFormDialog
+  },
   props: {
     importDialogVisible: {
       type: Boolean,
@@ -209,12 +155,50 @@ export default {
     const uploadHeaders = ref({
       'Authorization': `Bearer ${localStorage.getItem('token')}`
     });
+    
+    // 本地响应式变量，用于存储对话框状态
+    const localImportDialogVisible = ref(props.importDialogVisible);
+    const localAddDialogVisible = ref(props.addDialogVisible);
+    const localEditDialogVisible = ref(props.editDialogVisible);
+    const localCreateAssignmentDialogVisible = ref(props.createAssignmentDialogVisible);
+    
+    // 监听props变化，更新本地变量
+    watch(() => props.importDialogVisible, (newVal) => {
+      localImportDialogVisible.value = newVal;
+    });
+    
+    watch(() => props.addDialogVisible, (newVal) => {
+      localAddDialogVisible.value = newVal;
+    });
+    
+    watch(() => props.editDialogVisible, (newVal) => {
+      localEditDialogVisible.value = newVal;
+    });
+    
+    watch(() => props.createAssignmentDialogVisible, (newVal) => {
+      localCreateAssignmentDialogVisible.value = newVal;
+    });
+    
+    // 监听本地变量变化，发出更新事件
+    watch(localImportDialogVisible, (newVal) => {
+      emit('update:importDialogVisible', newVal);
+    });
+    
+    watch(localAddDialogVisible, (newVal) => {
+      emit('update:addDialogVisible', newVal);
+    });
+    
+    watch(localEditDialogVisible, (newVal) => {
+      emit('update:editDialogVisible', newVal);
+    });
+    
+    watch(localCreateAssignmentDialogVisible, (newVal) => {
+      emit('update:createAssignmentDialogVisible', newVal);
+    });
 
     // 表单引用和数据
     const addUserFormRef = ref(null);
     const editUserFormRef = ref(null);
-    const createAssignmentFormRef = ref(null);
-
     // 添加用户表单
     const addUserForm = ref({
       studentId: '',
@@ -229,15 +213,6 @@ export default {
       name: '',
       class: '',
       role: 'student'
-    });
-
-    // 创建作业表单
-    const createAssignmentForm = ref({
-      title: '',
-      description: '',
-      deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000), // 默认一周后
-      namingRule: '{学号}_{姓名}_{作业名称}_{提交日期}',
-      fileTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
     });
 
     // 表单验证规则
@@ -265,23 +240,6 @@ export default {
         { required: true, message: '请输入班级', trigger: 'blur' },
         { min: 2, max: 20, message: '班级长度在 2 到 20 个字符之间', trigger: 'blur' }
       ]
-    });
-
-    const createAssignmentRules = ref({
-      title: [
-        { required: true, message: '请输入作业名称', trigger: 'blur' },
-        { min: 2, max: 100, message: '作业名称长度在 2 到 100 个字符之间', trigger: 'blur' }
-      ],
-      description: [{ required: true, message: '请输入作业描述', trigger: 'blur' }],
-      deadline: [{ required: true, message: '请选择截止日期', trigger: 'change' }],
-      namingRule: [{ required: true, message: '请输入文件命名规则', trigger: 'blur' }],
-      fileTypes: [{
-        required: true,
-        message: '请至少选择一种文件类型',
-        trigger: 'change',
-        type: 'array',
-        min: 1
-      }]
     });
 
     // 关闭对话框
@@ -399,13 +357,10 @@ export default {
     };
 
     // 创建作业
-    const handleCreateAssignment = async () => {
+    const handleCreateAssignment = async (formData) => {
       try {
-        // 表单验证
-        await createAssignmentFormRef.value.validate();
-        
         // 调用创建作业接口
-        await createAssignment(createAssignmentForm.value);
+        await createAssignment(formData);
         
         ElMessage.success('作业创建成功');
         closeCreateAssignmentDialog();
@@ -426,13 +381,10 @@ export default {
       uploadHeaders,
       addUserFormRef,
       editUserFormRef,
-      createAssignmentFormRef,
       addUserForm,
       editUserForm,
-      createAssignmentForm,
       addUserRules,
       editUserRules,
-      createAssignmentRules,
       closeImportDialog,
       closeAddDialog,
       closeEditDialog,
@@ -443,7 +395,12 @@ export default {
       downloadTemplate,
       handleAddUser,
       handleEditUser,
-      handleCreateAssignment
+      handleCreateAssignment,
+      // 本地响应式变量
+      localImportDialogVisible,
+      localAddDialogVisible,
+      localEditDialogVisible,
+      localCreateAssignmentDialogVisible
     };
   }
 };

@@ -10,7 +10,7 @@ services:
       - "3001:3001"
     volumes:
       - backend-uploads:/app/uploads
-      - backend-data:/app/data
+      - backend-data:/app/db
     environment:
       - NODE_ENV=production
       - PORT=3001

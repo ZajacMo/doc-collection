@@ -52,14 +52,14 @@
     </el-tabs>
 
     <!-- 对话框组件 -->
-    <dialog-components 
+    <DialogComponents
       v-model:import-dialog-visible="importUserDialogVisible"
       v-model:add-dialog-visible="addUserDialogVisible"
       v-model:edit-dialog-visible="editUserDialogVisible"
       v-model:create-assignment-dialog-visible="createAssignmentDialogVisible"
       :edit-user-data="currentEditUser"
       @data-updated="loadData"
-    />
+    ></DialogComponents>
   </div>
 </template>
 

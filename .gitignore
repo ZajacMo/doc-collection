@@ -92,8 +92,7 @@ temp/
 
 # File uploads
 uploads/
-
-# Database file
-*.db
+**/data/
+server/db/*.db
+server/uploads/
 .xls
-data/

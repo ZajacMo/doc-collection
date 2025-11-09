@@ -10,7 +10,7 @@
 
           <!-- 加载状态 -->
           <div v-if="loading" class="loading-container">
-            <el-icon class="el-icon-loading"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M928 160H96c-35.3 0-64 28.7-64 64v640c0 35.3 28.7 64 64 64h832c35.3 0 64-28.7 64-64V224c0-35.3-28.7-64-64-64zm-80 660H176V280h672v540z"></path><path fill="currentColor" d="M482 424a60 60 0 10120 0 60 60 0 10-120 0zM402 538.4a60 60 0 100-120 60 60 0 000 120zm160 0a60 60 0 100-120 60 60 0 000 120zm120.7 156a60 60 0 100-120 60 60 0 000 120zM562 712a60 60 0 100-120 60 60 0 000 120zm-160 0a60 60 0 100-120 60 60 0 000 120zM381.3 594.4a60 60 0 100-120 60 60 0 000 120z"></path></svg></el-icon>
+            <el-icon class="is-loading"><Loading /></el-icon>
             <p>加载中...</p>
           </div>
 
@@ -126,7 +126,7 @@
                 下载我的作业
               </el-button>
               <el-button 
-                v-if="userInfo?.role === 'admin'"
+                v-if="userInfo?.role == 'admin'"
                 type="warning" 
                 size="large"
                 @click="showUpdateDialog"
@@ -222,78 +222,23 @@
               </el-table-column>
             </el-table>
           </div>
-    <!-- 编辑作业对话框 -->
-    <el-dialog 
-      title="编辑作业" 
-      v-model="updateDialogVisible"
-      width="90%"
-      :max-width="600"
-    >
-      <el-form 
-        ref="updateFormRef" 
-        :model="updateForm" 
-        :rules="updateRules" 
-        label-width="100px"
-      >
-        <el-form-item label="作业名称" prop="title">
-          <el-input v-model="updateForm.title" placeholder="请输入作业名称"></el-input>
-        </el-form-item>
-        <el-form-item label="作业描述" prop="description">
-          <el-input 
-            v-model="updateForm.description" 
-            type="textarea" 
-            placeholder="请输入作业描述"
-            :rows="4"
-          ></el-input>
-        </el-form-item>
-        <el-form-item label="截止日期" prop="deadline">
-          <el-date-picker
-            v-model="updateForm.deadline"
-            type="datetime"
-            placeholder="选择截止日期时间"
-            style="width: 100%"
-          ></el-date-picker>
-        </el-form-item>
-        <el-form-item label="文件命名规则" prop="namingRule">
-          <el-input 
-            v-model="updateForm.namingRule" 
-            placeholder="例如：{学号}_{姓名}_{作业名称}_{提交日期}"
-          ></el-input>
-          <div class="form-tip">支持的变量：{学号}, {姓名}, {作业名称}, {提交日期}</div>
-        </el-form-item>
-        <el-form-item label="允许的文件类型" prop="fileTypes">
-          <el-select 
-            v-model="updateForm.fileTypes" 
-            multiple 
-            placeholder="选择允许的文件类型"
-          >
-            <el-option label="PDF" value="pdf"></el-option>
-            <el-option label="Word文档" value="doc"></el-option>
-            <el-option label="Word文档" value="docx"></el-option>
-            <el-option label="Excel表格" value="xls"></el-option>
-            <el-option label="Excel表格" value="xlsx"></el-option>
-            <el-option label="PPT演示" value="ppt"></el-option>
-            <el-option label="PPT演示" value="pptx"></el-option>
-            <el-option label="ZIP压缩" value="zip"></el-option>
-            <el-option label="RAR压缩" value="rar"></el-option>
-            <el-option label="图片" value="jpg"></el-option>
-            <el-option label="图片" value="jpeg"></el-option>
-            <el-option label="图片" value="png"></el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <div slot="footer" class="dialog-footer">
-        <el-button @click="updateDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleUpdateAssignment">确定</el-button>
-      </div>
-    </el-dialog>
+    <!-- 复用的作业编辑对话框组件 -->
+    <AssignmentFormDialog
+      v-model:visible="updateDialogVisible"
+      :assignment="assignment"
+      dialog-type="update"
+      @submit="handleUpdateAssignment"
+    />
+    
   </div>
 </template>
 
 <script>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import AssignmentFormDialog from '../components/AssignmentFormDialog.vue';
 import { ElMessage, ElMessageBox, ElLoading, ElIcon } from 'element-plus';
+import { Loading } from '@element-plus/icons-vue';
 import { getCurrentUser, logoutUser } from '../services/userService';
 import { 
   getAssignmentById, 
@@ -309,6 +254,9 @@ import {
 
 export default {
   name: 'AssignmentDetailView',
+  components: {
+    AssignmentFormDialog
+  },
   setup() {
     const userInfo = ref(getCurrentUser());
     const assignment = ref(null);
@@ -317,36 +265,6 @@ export default {
     const allStudents = ref(0);
     const loading = ref(true);
     const updateDialogVisible = ref(false);
-    const updateFormRef = ref(null);
-    const updateForm = ref({
-      title: '',
-      description: '',
-      deadline: new Date(),
-      namingRule: '',
-      fileTypes: []
-    });
-    
-    const updateRules = ref({
-      title: [
-        { required: true, message: '请输入作业名称', trigger: 'blur' },
-        { min: 2, max: 100, message: '作业名称长度在 2 到 100 个字符之间', trigger: 'blur' }
-      ],
-      deadline: [
-        { required: true, message: '请选择截止日期', trigger: 'change' }
-      ],
-      namingRule: [
-        { required: true, message: '请输入文件命名规则', trigger: 'blur' }
-      ],
-      fileTypes: [
-        {
-          required: true,
-          message: '请至少选择一种文件类型',
-          trigger: 'change',
-          type: 'array',
-          min: 1
-        }
-      ]
-    });
     
     // 格式化日期
     const formatDate = (dateString) => {
@@ -488,15 +406,8 @@ export default {
     
     // 显示编辑作业对话框
     const showUpdateDialog = () => {
-      // 复制当前作业数据到编辑表单，添加空值检查
+      // 直接打开对话框，组件内部会处理表单数据的初始化
       if (assignment.value) {
-        updateForm.value = {
-          title: assignment.value.title || '',
-          description: assignment.value.description || '',
-          deadline: assignment.value.deadline ? new Date(assignment.value.deadline) : new Date(),
-          namingRule: assignment.value.namingRule || '',
-          fileTypes: Array.isArray(assignment.value.fileTypes) ? [...assignment.value.fileTypes] : []
-        };
         updateDialogVisible.value = true;
       } else {
         ElMessage.warning('作业数据未加载完成，请稍后再试');
@@ -504,14 +415,11 @@ export default {
     };
     
     // 处理更新作业
-    const handleUpdateAssignment = async () => {
+    const handleUpdateAssignment = async (formData) => {
       try {
-        // 表单验证
-        await updateFormRef.value.validate();
-        
         // 调用更新作业接口
         const assignmentId = getAssignmentIdFromUrl();
-        await updateAssignment(assignmentId, updateForm.value);
+        await updateAssignment(assignmentId, formData);
         
         ElMessage.success('作业更新成功');
         updateDialogVisible.value = false;
@@ -582,9 +490,6 @@ export default {
       submissionList,
       loading,
       updateDialogVisible,
-      updateFormRef,
-      updateForm,
-      updateRules,
       totalStudents,
       submittedCount,
       pendingCount,

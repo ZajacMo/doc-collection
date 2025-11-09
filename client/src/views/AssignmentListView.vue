@@ -162,76 +162,18 @@
               @current-change="handleCurrentChange"
             />
           </div>
-    <!-- 创建作业对话框 -->
-    <el-dialog 
-      title="创建作业" 
-      v-model="createDialogVisible"
-      width="90%"
-      :max-width="600"
-    >
-      <el-form 
-        ref="createFormRef" 
-        :model="createForm" 
-        :rules="createRules" 
-        label-width="100px"
-      >
-        <el-form-item label="作业名称" prop="title">
-          <el-input v-model="createForm.title" placeholder="请输入作业名称"></el-input>
-        </el-form-item>
-        <el-form-item label="作业描述" prop="description">
-          <el-input 
-            v-model="createForm.description" 
-            type="textarea" 
-            placeholder="请输入作业描述"
-            :rows="4"
-          ></el-input>
-        </el-form-item>
-        <el-form-item label="截止日期" prop="deadline">
-          <el-date-picker
-            v-model="createForm.deadline"
-            type="datetime"
-            placeholder="选择截止日期时间"
-            style="width: 100%"
-          ></el-date-picker>
-        </el-form-item>
-        <el-form-item label="文件命名规则" prop="namingRule">
-          <el-input 
-            v-model="createForm.namingRule" 
-            placeholder="例如：{学号}_{姓名}_{作业名称}_{提交日期}"
-          ></el-input>
-          <div class="form-tip">支持的变量：{学号}, {姓名}, {作业名称}, {提交日期}</div>
-        </el-form-item>
-        <el-form-item label="允许的文件类型" prop="fileTypes">
-          <el-select 
-            v-model="createForm.fileTypes" 
-            multiple 
-            placeholder="选择允许的文件类型"
-          >
-            <el-option label="PDF" value="pdf"></el-option>
-            <el-option label="Word文档" value="doc"></el-option>
-            <el-option label="Word文档" value="docx"></el-option>
-            <el-option label="Excel表格" value="xls"></el-option>
-            <el-option label="Excel表格" value="xlsx"></el-option>
-            <el-option label="PPT演示" value="ppt"></el-option>
-            <el-option label="PPT演示" value="pptx"></el-option>
-            <el-option label="ZIP压缩" value="zip"></el-option>
-            <el-option label="RAR压缩" value="rar"></el-option>
-            <el-option label="图片" value="jpg"></el-option>
-            <el-option label="图片" value="jpeg"></el-option>
-            <el-option label="图片" value="png"></el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <div slot="footer" class="dialog-footer">
-        <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleCreateAssignment">确定</el-button>
-      </div>
-    </el-dialog>
+    <!-- 创建作业对话框组件 -->
+    <AssignmentFormDialog
+      v-model:visible="createDialogVisible"
+      dialog-type="create"
+      @submit="handleCreateSubmit"
+      @cancel="handleCreateCancel"
+    />
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { getCurrentUser, logoutUser } from '../services/userService';
 import { 
@@ -241,9 +183,13 @@ import {
   isAssignmentExpired 
 } from '../services/assignmentService';
 import { getSubmissionsByUser } from '../services/submissionService';
+import AssignmentFormDialog from '../components/AssignmentFormDialog.vue';
 
 export default {
   name: 'AssignmentListView',
+  components: {
+    AssignmentFormDialog
+  },
   setup() {
     const userInfo = ref(getCurrentUser());
     const assignments = ref([]);
@@ -257,35 +203,28 @@ export default {
     const sidebarVisible = ref(true);
     const isMobile = ref(window.innerWidth < 768);
     const createFormRef = ref(null);
-    const createForm = ref({
+    const createForm = reactive({
       title: '',
       description: '',
-      deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000), // 默认一周后
-      namingRule: '{学号}_{姓名}_{作业名称}_{提交日期}',
+      deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
+      namingRule: '{姓名}-{学号}',
       fileTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
     });
-    
-    const createRules = ref({
+    const createRules = {
       title: [
         { required: true, message: '请输入作业名称', trigger: 'blur' },
-        { min: 2, max: 100, message: '作业名称长度在 2 到 100 个字符之间', trigger: 'blur' }
+        { max: 100, message: '作业名称最多100个字符', trigger: 'blur' }
+      ],
+      description: [
+        { required: true, message: '请输入作业描述', trigger: 'blur' }
       ],
       deadline: [
         { required: true, message: '请选择截止日期', trigger: 'change' }
       ],
-      namingRule: [
-        { required: true, message: '请输入文件命名规则', trigger: 'blur' }
-      ],
       fileTypes: [
-        {
-          required: true,
-          message: '请至少选择一种文件类型',
-          trigger: 'change',
-          type: 'array',
-          min: 1
-        }
+        { required: true, message: '请至少选择一种允许的文件类型', trigger: 'change' }
       ]
-    });
+    };
     
     // 格式化日期
     const formatDate = (dateString) => {
@@ -415,29 +354,16 @@ export default {
     // 显示创建作业对话框
     const showCreateDialog = () => {
         createDialogVisible.value = true;
-        console.log('createDialogVisible:', createDialogVisible.value);
       };
     
-    // 处理创建作业
-    const handleCreateAssignment = async () => {
+    // 处理创建作业提交
+    const handleCreateSubmit = async (formData) => {
       try {
-        // 表单验证
-        await createFormRef.value.validate();
-        
         // 调用创建作业接口
-        await createAssignment(createForm.value);
+        await createAssignment(formData);
         
         ElMessage.success('作业创建成功');
-          createDialogVisible.value = false;
-        
-        // 重置表单
-        createForm.value = {
-          title: '',
-          description: '',
-          deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
-          namingRule: '{学号}_{姓名}_{作业名称}_{提交日期}',
-          fileTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
-        };
+        createDialogVisible.value = false;
         
         // 重新加载数据
         loadData();
@@ -445,6 +371,11 @@ export default {
         ElMessage.error(error.response?.data?.message || '创建作业失败');
         console.error('创建作业失败:', error);
       }
+    };
+    
+    // 处理创建作业取消
+    const handleCreateCancel = () => {
+        // 取消操作由组件内部处理
     };
     
     // 处理删除作业
@@ -492,9 +423,6 @@ export default {
       currentPage,
       pageSize,
       createDialogVisible,
-      createFormRef,
-      createForm,
-      createRules,
       assignmentsWithStatus,
       filteredAssignments,
       totalAssignments,
