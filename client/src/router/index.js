@@ -8,7 +8,6 @@ import AssignmentListView from '../views/AssignmentListView.vue';
 import AssignmentDetailView from '../views/AssignmentDetailView.vue';
 import SubmitAssignmentView from '../views/SubmitAssignmentView.vue';
 import AdminPanelView from '../views/AdminPanelView.vue';
-import SubmissionManagementView from '../views/SubmissionManagementView.vue';
 
 // 导入用户服务
 import { getCurrentUser } from '../services/userService.js';
@@ -61,12 +60,7 @@ const routes = [
     component: AdminPanelView,
     meta: { requiresAuth: true, requiresAdmin: true }
   },
-  {
-    path: '/admin/submissions',
-    name: 'submission-management',
-    component: SubmissionManagementView,
-    meta: { requiresAuth: true, requiresAdmin: true }
-  }
+
 ];
 
 // 创建路由器

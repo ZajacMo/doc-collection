@@ -37,7 +37,7 @@ async function testDatabase() {
         });
       });
       
-      console.log('查询到的用户数据:', users);
+      // console.log('查询到的用户数据:', users);
     } else {
       console.log('users表不存在');
       

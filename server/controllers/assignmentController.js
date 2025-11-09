@@ -133,11 +133,11 @@ exports.createAssignment = async (req, res) => {
     const newId = (maxIdRow?.maxId || 0) + 1;
     
     const now = new Date().toISOString();
-    const { title, description = '', deadline, namingRule, fileTypes = ['pdf', 'doc', 'docx'] } = req.body;
+    const { title, description = '', deadline, fileTypes = ['pdf', 'doc', 'docx'] } = req.body;
     
     await run(
-      `INSERT INTO assignments (id, title, description, deadline, createTime, updateTime, namingRule, fileTypes) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO assignments (id, title, description, deadline, createTime, updateTime, fileTypes) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       
       [
         newId.toString(),
@@ -146,7 +146,6 @@ exports.createAssignment = async (req, res) => {
         deadline,
         now,
         now,
-        namingRule || process.env.FILE_NAMING_RULE || '{学号}_{姓名}_{作业名称}_{提交日期}',
         JSON.stringify(fileTypes)
       ]
     );
@@ -158,7 +157,6 @@ exports.createAssignment = async (req, res) => {
       deadline,
       createTime: now,
       updateTime: now,
-      namingRule: namingRule || process.env.FILE_NAMING_RULE || '{学号}_{姓名}_{作业名称}_{提交日期}',
       fileTypes
     };
     
@@ -171,7 +169,7 @@ exports.createAssignment = async (req, res) => {
 // 更新作业
 exports.updateAssignment = async (req, res) => {
   try {
-    const { title, description, deadline, namingRule, fileTypes } = req.body;
+    const { title, description, deadline, fileTypes } = req.body;
     const now = new Date().toISOString();
     
     // 构建更新字段
@@ -190,10 +188,7 @@ exports.updateAssignment = async (req, res) => {
       updates.push('deadline = ?');
       params.push(deadline);
     }
-    if (namingRule !== undefined) {
-      updates.push('namingRule = ?');
-      params.push(namingRule);
-    }
+    // namingRule字段已移除
     if (fileTypes !== undefined) {
       updates.push('fileTypes = ?');
       params.push(JSON.stringify(fileTypes));
@@ -255,9 +250,21 @@ exports.deleteAssignment = async (req, res) => {
 };
 
 // 获取作业的提交情况
-exports.getAssignmentSubmissions = (req, res) => {
-  const assignmentSubmissions = submissions.filter(s => s.assignmentId === req.params.id);
-  res.json(assignmentSubmissions);
+exports.getAssignmentSubmissions = async (req, res) => {
+  try {
+    const assignmentId = req.params.id;
+    
+    // 从数据库查询该作业的所有提交记录
+    const submissions = await query(
+      'SELECT * FROM submissions WHERE assignmentId = ? ORDER BY submitTime DESC',
+      [assignmentId]
+    );
+    
+    res.json(submissions);
+  } catch (error) {
+    console.error('获取作业提交记录失败:', error);
+    res.status(500).json({ message: '获取作业提交记录失败', error: error.message });
+  }
 };
 
 // 查询作业提交情况

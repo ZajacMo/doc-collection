@@ -199,6 +199,15 @@ export default {
     // 表单引用和数据
     const addUserFormRef = ref(null);
     const editUserFormRef = ref(null);
+    // 作业创建表单引用和数据
+    const createAssignmentFormRef = ref(null);
+    const createAssignmentForm = ref({
+      title: '',
+      description: '',
+      deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
+      namingRule: '{学号}_{姓名}_{作业名称}_{提交日期}',
+      fileTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
+    });
     // 添加用户表单
     const addUserForm = ref({
       studentId: '',
@@ -381,6 +390,8 @@ export default {
       uploadHeaders,
       addUserFormRef,
       editUserFormRef,
+      createAssignmentFormRef,
+      createAssignmentForm,
       addUserForm,
       editUserForm,
       addUserRules,

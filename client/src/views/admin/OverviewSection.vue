@@ -142,7 +142,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 15px;
+  /* gap: 15px; */
 }
 
 .overview-icon {
@@ -152,6 +152,7 @@ export default {
 
 .overview-info {
   text-align: left;
+  text-align: center;
 }
 
 .overview-number {
@@ -163,6 +164,7 @@ export default {
 
 .overview-label {
   font-size: 14px;
+  text-align: center;
   color: #909399;
 }
 

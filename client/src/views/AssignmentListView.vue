@@ -109,14 +109,7 @@
                   <el-tag v-else type="info">-</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="文件命名规则" min-width="200">
-                <template v-slot="{ row }">
-                  <el-tooltip v-if="row && row.namingRule" :content="row.namingRule" placement="top">
-                    <div class="naming-rule">{{ row.namingRule }}</div>
-                  </el-tooltip>
-                  <span v-else>-</span>
-                </template>
-              </el-table-column>
+              <!-- 文件命名规则列已移除 -->
               <el-table-column label="操作" min-width="120" fixed="right">
                 <template v-slot="{ row }">
                   <div v-if="row && row.id">
@@ -175,7 +168,7 @@
 <script>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { getCurrentUser, logoutUser } from '../services/userService';
+import { getCurrentUserInfo, logoutUser } from '../services/userService';
 import { 
   getAllAssignments, 
   createAssignment, 
@@ -191,7 +184,7 @@ export default {
     AssignmentFormDialog
   },
   setup() {
-    const userInfo = ref(getCurrentUser());
+    const userInfo = ref(getCurrentUserInfo());
     const assignments = ref([]);
     const submissions = ref([]);
     const statusFilter = ref('all');
@@ -207,7 +200,6 @@ export default {
       title: '',
       description: '',
       deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
-      namingRule: '{姓名}-{学号}',
       fileTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
     });
     const createRules = {
@@ -295,9 +287,13 @@ export default {
         const assignmentsData = await getAllAssignments();
         assignments.value = assignmentsData || [];
         
-        // 获取用户提交记录
-        const submissionsData = await getSubmissionsByUser(userInfo.value.studentId);
-        submissions.value = submissionsData || [];
+        // 只有在用户已登录时才获取提交记录
+        if (userInfo.value && userInfo.value.studentId) {
+          const submissionsData = await getSubmissionsByUser(userInfo.value.studentId);
+          submissions.value = submissionsData || [];
+        } else {
+          submissions.value = [];
+        }
         
       } catch (error) {
         ElMessage.error('加载数据失败');
@@ -432,15 +428,16 @@ export default {
       handleSizeChange,
       handleCurrentChange,
       goToDetail,
-    goToSubmit,
-    goToProfile,
-    handleLogout,
-    showCreateDialog,
-    handleCreateAssignment,
-    handleDelete,
-    formatDate,
-    isAssignmentUrgent,
-    isAssignmentExpired
+      goToSubmit,
+      goToProfile,
+      handleLogout,
+      showCreateDialog,
+      handleCreateSubmit,
+      handleCreateCancel,
+      handleDelete,
+      formatDate,
+      isAssignmentUrgent,
+      isAssignmentExpired
     };
   }
 };
@@ -531,11 +528,7 @@ export default {
   text-decoration: underline;
 }
 
-.naming-rule {
-  font-size: 12px;
-  color: #606266;
-  word-break: break-all;
-}
+/* 文件命名规则样式已移除 */
 
 .text-danger {
   color: #f56c6c;

@@ -53,10 +53,10 @@ const handleMenuSelect = (index) => {
   color: white;
   flex-shrink: 0;
   width: 240px;
-  @media (max-width: 768px) {
+  @media (max-width: 968px) {
     width: 200px;
   }
-  @media (max-width: 480px) {
+  @media (max-width: 580px) {
     width: 60px;
   }
 }
@@ -72,17 +72,17 @@ const handleMenuSelect = (index) => {
 }
 
 .el-menu-vertical-demo .el-menu-item:hover {
-  background-color: #1890ff;
+  background-color: #0a5aa5;
   color: white;
 }
 
 .el-menu-vertical-demo .el-menu-item.is-active {
-  background-color: #1890ff;
+  background-color: #16538b;
   color: white;
 }
 
 /* 当导航栏宽度为60px时，只显示图标 */
-@media (max-width: 480px) {
+@media (max-width: 580px) {
   .el-menu-item span {
     display: none;
   }

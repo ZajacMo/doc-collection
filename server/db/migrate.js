@@ -72,7 +72,6 @@ const createTables = async () => {
         deadline TEXT NOT NULL,
         createTime TEXT NOT NULL,
         updateTime TEXT NOT NULL,
-        namingRule TEXT NOT NULL,
         fileTypes TEXT NOT NULL
       );
     `);
@@ -170,8 +169,8 @@ const importAssignments = async () => {
       for (const assignment of assignments) {
         if (assignment.id && assignment.title) {
           await db.run(
-            `INSERT OR IGNORE INTO assignments (id, title, description, deadline, createTime, updateTime, namingRule, fileTypes) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT OR IGNORE INTO assignments (id, title, description, deadline, createTime, updateTime, fileTypes) 
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
               assignment.id,
               assignment.title,
@@ -179,7 +178,6 @@ const importAssignments = async () => {
               assignment.deadline || new Date().toISOString(),
               assignment.createTime || new Date().toISOString(),
               assignment.updateTime || new Date().toISOString(),
-              assignment.namingRule || '{学号}_{姓名}_{作业名称}_{提交日期}',
               JSON.stringify(assignment.fileTypes || ['pdf', 'doc', 'docx'])
             ]
           );

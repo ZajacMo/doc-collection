@@ -1,15 +1,6 @@
 <template>
   <div class="submit-assignment-container">
-    <el-container>
-      <!-- 顶部导航栏 -->
-      <el-header class="header">
-        <div class="header-content">
-          <div class="header-title">
-            <i class="el-icon-document"></i>
-            <span>作业收集系统</span>
-          </div>
-        </div>
-      </el-header>
+
 
       <!-- 主内容区域 -->
       <el-container>
@@ -55,21 +46,7 @@
               </div>
             </div>
 
-            <!-- 文件命名规则提示 -->
-          <div class="naming-rule-tip">
-            <el-card class="rule-tip-card">
-              <div class="rule-tip-header">
-                <i class="el-icon-warning"></i>
-                <span>重要提示</span>
-              </div>
-              <div class="rule-tip-content">
-                <p>请严格按照以下命名规则提交文件：</p>
-                <pre>{{ assignment.namingRule }}</pre>
-                <p class="example">示例：{{ generateExampleFileName() }}</p>
-                <p style="color: #e6a23c;">系统将自动根据用户信息为文件命名为"学号-姓名.扩展名"</p>
-              </div>
-            </el-card>
-          </div>
+
 
             <!-- 提交表单 -->
             <el-card class="submit-form-card">
@@ -79,15 +56,45 @@
                 :rules="submitRules" 
                 label-width="100px"
               >
-                <!-- 系统自动获取用户信息，无需手动输入学号和姓名 -->
-          <el-form-item>
-            <el-tag type="info" size="small">
-              学号：{{ submitForm.studentId }}
-            </el-tag>
-            <el-tag type="info" size="small" style="margin-left: 10px;">
-              姓名：{{ submitForm.studentName }}
+                <!-- 用户信息显示和手动输入选项 -->
+          <el-form-item label="学号" prop="studentId">
+            <el-input 
+              v-model="submitForm.studentId" 
+              placeholder="请输入学号"
+              :disabled="submitForm.studentId && !manualInputEnabled"
+            >
+              <template slot="append">
+                <el-button 
+                  size="small" 
+                  type="text" 
+                  @click="manualInputEnabled = !manualInputEnabled"
+                >
+                  {{ manualInputEnabled ? '自动获取' : '手动输入' }}
+                </el-button>
+              </template>
+            </el-input>
+          </el-form-item>
+          <el-form-item label="姓名" prop="studentName">
+            <el-input 
+              v-model="submitForm.studentName" 
+              placeholder="请输入姓名"
+              :disabled="submitForm.studentName && !manualInputEnabled"
+            >
+              <template slot="append">
+                <el-button 
+                  size="small" 
+                  type="text" 
+                  @click="manualInputEnabled = !manualInputEnabled"
+                >
+                  {{ manualInputEnabled ? '自动获取' : '手动输入' }}
+                </el-button>
+              </template>
+            </el-input>
+            <el-tag v-if="!submitForm.studentId" type="warning" size="small" style="margin-top: 5px; display: block;">
+              提示：如果自动获取失败，请手动输入学号和姓名
             </el-tag>
           </el-form-item>
+
                 <el-form-item label="作业名称" prop="assignmentName">
                   <el-input v-model="submitForm.assignmentName" :disabled="true"></el-input>
                 </el-form-item>
@@ -99,7 +106,7 @@
                     :on-success="handleUploadSuccess"
                     :on-error="handleUploadError"
                     :before-upload="beforeUpload"
-                    :data="getUploadData"
+                    :data="getUploadData()"
                     :show-file-list="true"
                     :file-list="fileList"
                     :multiple="false"
@@ -140,7 +147,6 @@
           </div>
         </el-main>
       </el-container>
-    </el-container>
   </div>
 </template>
 
@@ -174,17 +180,27 @@ export default {
     const uploadUrl = 'http://localhost:3001/api/submissions';
     const uploadHeaders = ref({});
     
+    // 表单数据 - 添加默认值以避免空字符串问题
     const submitForm = ref({
-      studentId: '',
-      studentName: '',
+      studentId: localStorage.getItem('studentId') || '', // 尝试从localStorage直接获取
+      studentName: localStorage.getItem('studentName') || '',
       assignmentName: '',
       description: '',
       file: null
     });
     
+    // 是否启用手动输入
+    const manualInputEnabled = ref(false);
+    
     const submitRules = ref({
       assignmentName: [
         { required: true, message: '作业名称不能为空', trigger: 'blur' }
+      ],
+      studentId: [
+        { required: true, message: '请输入学号', trigger: 'blur' }
+      ],
+      studentName: [
+        { required: true, message: '请输入姓名', trigger: 'blur' }
       ],
       file: [
         { required: true, message: '请选择要上传的文件', trigger: 'change' }
@@ -215,11 +231,7 @@ export default {
       return diff > 0 && diff < 24 * 60 * 60 * 1000;
     };
     
-    // 生成示例文件名
-    const generateExampleFileName = () => {
-      // 系统将自动命名为"学号-姓名.扩展名"
-      return '1001-张三.pdf';
-    };
+
     
     // 获取作业ID
     const getAssignmentIdFromUrl = () => {
@@ -239,13 +251,31 @@ export default {
         // 从localStorage获取用户信息
         const userData = getCurrentUser();
         
+        // console.log('用户数据:', userData);
+        // console.log('用户嵌套信息:', userData?.user);
+        
         assignment.value = assignmentData;
         userInfo.value = userData;
         
         // 更新表单数据
         submitForm.value.assignmentName = assignmentData.title;
-        submitForm.value.studentId = userData.studentId || '';
-        submitForm.value.studentName = userData.name || '';
+        
+        // 修正：尝试多种方式获取学生信息，确保studentId不为空
+        const userIdFromUserData = userData?.user?.studentId;
+        const userIdFromLocalStorage = localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.studentId : null;
+        
+        submitForm.value.studentId = userIdFromUserData || userIdFromLocalStorage || submitForm.value.studentId;
+        submitForm.value.studentName = userData?.user?.name || (localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.name : '') || submitForm.value.studentName;
+        
+        // 保存到localStorage以便下次使用
+        if (submitForm.value.studentId) {
+          localStorage.setItem('studentId', submitForm.value.studentId);
+        }
+        if (submitForm.value.studentName) {
+          localStorage.setItem('studentName', submitForm.value.studentName);
+        }
+        
+        // console.log('表单数据:', submitForm.value);
         
       } catch (error) {
         ElMessage.error('加载作业信息失败');
@@ -305,14 +335,33 @@ export default {
     
     // 获取上传数据
     const getUploadData = () => {
-      return {
+      // 验证studentId是否存在
+      if (!submitForm.value.studentId && !userInfo.value?.user?.studentId) {
+        ElMessage.error('无法获取学号信息，请刷新页面或重新登录');
+        console.error('学号信息缺失:', { submitForm: submitForm.value, userInfo: userInfo.value });
+      }
+      
+      const studentIdValue = submitForm.value.studentId || 
+                            userInfo.value?.user?.studentId || 
+                            (localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.studentId : '') || 
+                            localStorage.getItem('studentId') || '';
+      
+      const studentNameValue = submitForm.value.studentName || 
+                              userInfo.value?.user?.name || 
+                              (localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.name : '') || 
+                              localStorage.getItem('studentName') || '';
+      
+      const data = {
         assignmentId: getAssignmentIdFromUrl(),
-        studentId: submitForm.value.studentId,
-        studentName: submitForm.value.studentName,
-        assignmentName: submitForm.value.assignmentName, // 提供作业名称用于创建文件夹
-        description: submitForm.value.description || '', // 添加描述字段
-        autoRename: true // 指示后端自动重命名文件
+        studentId: studentIdValue,
+        studentName: studentNameValue,
+        assignmentName: submitForm.value.assignmentName,
+        description: submitForm.value.description || '',
+        autoRename: true
       };
+      
+      // console.log('上传数据:', data);
+      return data;
     };
     
     // 处理上传成功
@@ -326,10 +375,36 @@ export default {
       }
     };
     
-    // 处理上传失败
+    // 处理上传错误
     const handleUploadError = (error) => {
-      ElMessage.error('文件上传失败，请重试');
-      console.error('文件上传失败:', error);
+      // 显示更详细的错误信息
+      let errorMessage = '文件上传失败';
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMessage = '文件上传失败: ' + error.response.data.message;
+      } else if (error.message) {
+        errorMessage = '文件上传失败: ' + error.message;
+      }
+      
+      ElMessage.error(errorMessage);
+      console.error('文件上传失败详情:', error);
+      
+      // 如果是学生不存在错误，尝试清除缓存并重新获取用户信息
+      if (error.response?.data?.message === '学生不存在') {
+        ElMessageBox.confirm(
+          '检测到学生信息可能不匹配，是否清除缓存并重新获取用户信息？',
+          '提示',
+          {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }
+        ).then(() => {
+          localStorage.removeItem('studentId');
+          localStorage.removeItem('studentName');
+          // 重新加载页面
+          window.location.reload();
+        }).catch(() => {});
+      }
     };
     
     // 处理提交作业
@@ -397,11 +472,11 @@ export default {
       uploadHeaders,
       submitForm,
       submitRules,
+      manualInputEnabled,
       formatDate,
       formatFileSize,
       isAssignmentExpired,
       isAssignmentUrgent,
-      generateExampleFileName,
       goBack,
       beforeUpload,
       getUploadData,
@@ -416,7 +491,8 @@ export default {
 
 <style scoped>
 .submit-assignment-container {
-  height: 100vh;
+  height: calc(100vh - 60px);
+  width: 100%;
   overflow: scroll;
 }
 
@@ -424,31 +500,6 @@ export default {
   background-color: #1890ff;
   color: white;
   height: 60px;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 100%;
-  padding: 0 20px;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.header-title i {
-  margin-right: 10px;
-}
-
-.header-user {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
 }
 
 .aside {

@@ -2,7 +2,7 @@
   <!-- 作业编辑/创建对话框 -->
   <el-dialog 
     :title="dialogTitle" 
-    :visible="visible"
+    v-model="localVisible"
     @close="handleClose"
     width="90%"
     :max-width="600"
@@ -32,14 +32,7 @@
           style="width: 100%"
         ></el-date-picker>
       </el-form-item>
-      <el-form-item label="文件命名规则" prop="namingRule">
-        <el-input 
-          v-model="formData.namingRule" 
-          disabled
-          style="background-color: #f5f7fa;"
-        ></el-input>
-        <div class="form-tip">系统将强制使用"姓名-学号"格式命名文件，无需用户手动命名。</div>
-      </el-form-item>
+      <!-- 文件命名规则表单项已移除 -->
       <el-form-item label="允许的文件类型" prop="fileTypes">
         <el-select 
           v-model="formData.fileTypes" 
@@ -96,6 +89,19 @@ export default {
   },
   emits: ['update:visible', 'cancel', 'submit'],
   setup(props, { emit }) {
+    // 本地响应式引用，用于存储visible状态
+    const localVisible = ref(props.visible);
+    
+    // 监听props中的visible变化，同步到本地变量
+    watch(() => props.visible, (newValue) => {
+      localVisible.value = newValue;
+    });
+    
+    // 监听本地visible变化，发出update事件
+    watch(localVisible, (newValue) => {
+      emit('update:visible', newValue);
+    });
+    
     // 表单引用
     const formRef = ref(null);
     
@@ -104,7 +110,6 @@ export default {
       title: '',
       description: '',
       deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000), // 默认一周后
-      namingRule: '{姓名}-{学号}', // 强制使用固定格式
       fileTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
     });
     
@@ -117,9 +122,7 @@ export default {
       deadline: [
         { required: true, message: '请选择截止日期', trigger: 'change' }
       ],
-      namingRule: [
-        { required: true, message: '请输入文件命名规则', trigger: 'blur' }
-      ],
+      
       fileTypes: [
         {
           required: true,
@@ -138,7 +141,7 @@ export default {
     
     // 处理对话框关闭
     const handleClose = () => {
-      emit('update:visible', false);
+      localVisible.value = false;
     };
 
     // 重置表单
@@ -149,14 +152,12 @@ export default {
         formData.title = '';
         formData.description = '';
         formData.deadline = new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
-        formData.namingRule = '{姓名}-{学号}';
         formData.fileTypes = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar'];
       } else if (props.assignment) {
         // 编辑模式：使用传入的作业数据
         formData.title = props.assignment.title || '';
         formData.description = props.assignment.description || '';
         formData.deadline = props.assignment.deadline ? new Date(props.assignment.deadline) : new Date();
-        formData.namingRule = '{姓名}-{学号}'; // 强制使用固定格式
         formData.fileTypes = Array.isArray(props.assignment.fileTypes) ? [...props.assignment.fileTypes] : [];
       }
       
@@ -168,7 +169,7 @@ export default {
     
     // 处理取消
     const handleCancel = () => {
-      emit('update:visible', false);
+      localVisible.value = false;
       emit('cancel');
     };
     
@@ -192,7 +193,7 @@ export default {
         // 对话框打开时重置表单
         resetForm();
       }
-    });
+    }, { immediate: true });
     
     // 监听作业数据变化（编辑模式下）
     watch(() => props.assignment, () => {
@@ -206,6 +207,7 @@ export default {
       formData,
       rules,
       dialogTitle,
+      localVisible,
       handleCancel,
       handleSubmit,
       handleClose

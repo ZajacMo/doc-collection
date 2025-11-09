@@ -79,18 +79,6 @@
               <p>{{ assignment.description || '暂无描述' }}</p>
             </div>
 
-            <!-- 文件命名规则 -->
-            <div class="naming-rule-section">
-              <h3>文件命名规则</h3>
-              <div class="naming-rule-container">
-                <pre>{{ assignment.namingRule }}</pre>
-                <div class="rule-tips">
-                  <p>⚠️ 请严格按照此规则命名文件，否则无法提交！</p>
-                  <p>支持的变量：{学号}, {姓名}, {作业名称}, {提交日期}</p>
-                </div>
-              </div>
-            </div>
-
             <!-- 允许的文件类型 -->
             <div class="file-types-section">
               <h3>允许的文件类型</h3>
@@ -239,7 +227,7 @@ import { useRoute, useRouter } from 'vue-router';
 import AssignmentFormDialog from '../components/AssignmentFormDialog.vue';
 import { ElMessage, ElMessageBox, ElLoading, ElIcon } from 'element-plus';
 import { Loading } from '@element-plus/icons-vue';
-import { getCurrentUser, logoutUser } from '../services/userService';
+import { getCurrentUserInfo, logoutUser } from '../services/userService';
 import { 
   getAssignmentById, 
   updateAssignment, 
@@ -258,7 +246,7 @@ export default {
     AssignmentFormDialog
   },
   setup() {
-    const userInfo = ref(getCurrentUser());
+    const userInfo = ref(getCurrentUserInfo());
     const assignment = ref(null);
     const userSubmission = ref(null);
     const submissionList = ref([]);
@@ -603,43 +591,7 @@ export default {
   white-space: pre-wrap;
 }
 
-.naming-rule-section {
-  margin-bottom: 30px;
-}
-
-.naming-rule-section h3 {
-  color: #303133;
-  margin-bottom: 15px;
-  font-size: 18px;
-}
-
-.naming-rule-container {
-  background-color: #f5f7fa;
-  padding: 20px;
-  border-radius: 4px;
-  border-left: 4px solid #e6a23c;
-}
-
-.naming-rule-container pre {
-  background-color: transparent;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 16px;
-  color: #e6a23c;
-  font-weight: bold;
-}
-
-.rule-tips {
-  margin-top: 10px;
-}
-
-.rule-tips p {
-  margin: 5px 0;
-  font-size: 13px;
-  color: #909399;
-}
+/* 文件命名规则相关样式已移除 */
 
 .file-types-section {
   margin-bottom: 30px;
@@ -764,14 +716,6 @@ export default {
     overflow-x: auto;
   }
   
-  .naming-rule-container {
-    padding: 10px;
-  }
-  
-  .naming-rule-container pre {
-    font-size: 14px;
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
+  /* 响应式文件命名规则样式已移除 */
 }
 </style>

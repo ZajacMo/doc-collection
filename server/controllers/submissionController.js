@@ -102,16 +102,48 @@ exports.createSubmission = async (req, res) => {
   try {
     // 检查文件是否上传
     if (!req.file) {
+      console.log('没有收到文件上传');
       return res.status(400).json({ message: '请上传文件' });
     }
     
-    const { assignmentId, studentId, studentName, description = '' } = req.body;
+    // 打印所有可能包含数据的地方
+    // console.log('请求体原始数据:', req.body);
+    // console.log('请求表单数据:', req.fields);
+    // console.log('请求文件信息:', req.file);
     
-    // 获取autoRename参数
-    const autoRename = req.body.autoRename === 'true';
+    // 尝试从不同位置获取参数
+    const assignmentId = req.body?.assignmentId || req.fields?.assignmentId;
+    const studentId = req.body?.studentId || req.fields?.studentId;
+    const studentName = req.body?.studentName || req.fields?.studentName;
+    const description = req.body?.description || req.fields?.description || '';
+    const autoRename = req.body?.autoRename === 'true' || req.fields?.autoRename === 'true';
+    
+    console.log('解析后的数据:', { assignmentId, studentId, studentName, description, autoRename });
     
     // 检查学生和作业是否存在
-    const studentExists = await getOne('SELECT id, name FROM users WHERE id = ? AND role = ?', [studentId, 'student']);
+    console.log('验证学生信息:', { studentId, type: typeof studentId });
+    
+    // 尝试不同类型的studentId查询（字符串和数字转换）
+    let studentExists;
+    try {
+      // 首先尝试直接查询
+      studentExists = await getOne('SELECT id, name, studentId FROM users WHERE studentId = ? AND role = ?', [studentId, 'student']);
+      console.log('直接查询结果:', studentExists);
+      
+      // 如果直接查询失败，尝试转换为数字再查询
+      if (!studentExists && !isNaN(studentId)) {
+        const numericStudentId = Number(studentId);
+        studentExists = await getOne('SELECT id, name, studentId FROM users WHERE studentId = ? AND role = ?', [numericStudentId, 'student']);
+        console.log('数字转换后查询结果:', studentExists);
+      }
+      
+      // 查询所有学生信息用于调试
+      const allStudents = await getAll('SELECT id, name, studentId FROM users WHERE role = ?', ['student']);
+      console.log('所有学生信息:', allStudents);
+    } catch (error) {
+      console.error('数据库查询错误:', error);
+    }
+    
     if (!studentExists) {
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ message: '学生不存在' });

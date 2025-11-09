@@ -10,8 +10,8 @@ const api = axios.create({
   }
 });
 
-console.log('Axios实例已创建');
-console.log('基础URL:', api.defaults.baseURL);
+// console.log('Axios实例已创建');
+// console.log('基础URL:', api.defaults.baseURL);
 
 // 请求拦截器
 api.interceptors.request.use(
