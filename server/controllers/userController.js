@@ -1,131 +1,210 @@
 // 用户控制器
-const fs = require('fs');
-const path = require('path');
-const XLSX = require('xlsx');
+const { getDb } = require('../db/db');
 
-// 模拟数据库
-let users = [];
+/**
+ * 执行SQL查询
+ * @param {string} sql - SQL语句
+ * @param {Array} params - 参数数组
+ * @returns {Promise<Array>} 查询结果
+ */
+const query = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    const db = getDb();
+    db.all(sql, params, (err, rows) => {
+      if (err) {
+        console.error('查询数据库失败:', err.message);
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+};
 
-// 从Excel文件加载用户数据
-const loadUsersFromExcel = () => {
+/**
+ * 执行SQL语句（插入、更新、删除）
+ * @param {string} sql - SQL语句
+ * @param {Array} params - 参数数组
+ * @returns {Promise<Object>} 执行结果
+ */
+const run = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    const db = getDb();
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error('执行SQL失败:', err.message);
+        reject(err);
+      } else {
+        resolve({ lastID: this.lastID, changes: this.changes });
+      }
+    });
+  });
+};
+
+/**
+ * 获取单个用户
+ * @param {string} sql - SQL语句
+ * @param {Array} params - 参数数组
+ * @returns {Promise<Object|null>} 用户对象或null
+ */
+const getOne = async (sql, params = []) => {
+  const rows = await query(sql, params);
+  return rows.length > 0 ? rows[0] : null;
+};
+
+// 获取所有用户
+exports.getAllUsers = async (req, res) => {
   try {
-    const excelPath = path.join(__dirname, '../../名单.xls');
-    
-    // 始终先创建默认用户，确保admin用户可用
-    let defaultUsers = [
-      { id: '1', studentId: 'admin', name: '管理员', role: 'admin' },
-      { id: '2', studentId: '2023001', name: '张三', role: 'student' },
-      { id: '3', studentId: '2023002', name: '李四', role: 'student' },
-      { id: '4', studentId: '2023003', name: '王五', role: 'student' }
-    ];
-    
-    if (fs.existsSync(excelPath)) {
-      const workbook = XLSX.readFile(excelPath);
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(worksheet);
-      
-      // 处理数据，假设Excel中有学号、姓名等字段
-      const excelUsers = data.map((row, index) => ({
-        id: (defaultUsers.length + index + 1).toString(),
-        studentId: row['学号'] || `student${defaultUsers.length + index + 1}`,
-        name: row['姓名'] || `User${defaultUsers.length + index + 1}`,
-        // 其他可能的字段
-        className: row['班级'] || '',
-        major: row['专业'] || '',
-        email: row['邮箱'] || '',
-        role: 'student' // 默认角色为学生
-      }));
-      
-      // 合并默认用户和Excel用户
-      users = [...defaultUsers, ...excelUsers];
-      console.log(`成功从Excel加载了 ${excelUsers.length} 个用户数据，加上默认的 ${defaultUsers.length} 个用户，总共 ${users.length} 个用户`);
-    } else {
-      console.log('Excel文件不存在，使用默认用户数据');
-      users = defaultUsers;
-    }
+    const users = await query('SELECT * FROM users');
+    res.json(users);
   } catch (error) {
-    console.error('加载Excel文件失败:', error);
-    // 使用默认用户
-    users = [
-      { id: '1', studentId: 'admin', name: '管理员', role: 'admin' },
-      { id: '2', studentId: '2023001', name: '张三', role: 'student' },
-      { id: '3', studentId: '2023002', name: '李四', role: 'student' },
-      { id: '4', studentId: '2023003', name: '王五', role: 'student' }
-    ];
+    res.status(500).json({ message: '获取用户列表失败', error: error.message });
   }
 };
 
-// 初始化加载用户数据
-loadUsersFromExcel();
-
-// 获取所有用户
-exports.getAllUsers = (req, res) => {
-  res.json(users);
-};
-
 // 获取单个用户
-exports.getUserById = (req, res) => {
-  const user = users.find(u => u.id === req.params.id);
-  if (user) {
-    res.json(user);
-  } else {
-    res.status(404).json({ message: '用户不存在' });
+exports.getUserById = async (req, res) => {
+  try {
+    const user = await getOne('SELECT * FROM users WHERE id = ?', [req.params.id]);
+    if (user) {
+      res.json(user);
+    } else {
+      res.status(404).json({ message: '用户不存在' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: '获取用户信息失败', error: error.message });
   }
 };
 
 // 创建用户
-exports.createUser = (req, res) => {
-  const newUser = {
-    id: (users.length + 1).toString(),
-    ...req.body,
-    role: req.body.role || 'student'
-  };
-  users.push(newUser);
-  res.status(201).json(newUser);
+exports.createUser = async (req, res) => {
+  try {
+    // 获取最大ID
+    const maxIdRow = await getOne('SELECT MAX(CAST(id AS INTEGER)) as maxId FROM users');
+    const newId = (maxIdRow?.maxId || 0) + 1;
+    
+    const { studentId, name, role = 'student', className = '', major = '', email = '' } = req.body;
+    
+    await run(
+      'INSERT INTO users (id, studentId, name, role, className, major, email) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [newId.toString(), studentId, name, role, className, major, email]
+    );
+    
+    const newUser = {
+      id: newId.toString(),
+      studentId,
+      name,
+      role,
+      className,
+      major,
+      email
+    };
+    
+    res.status(201).json(newUser);
+  } catch (error) {
+    if (error.code === 'SQLITE_CONSTRAINT') {
+      res.status(400).json({ message: '学号已存在' });
+    } else {
+      res.status(500).json({ message: '创建用户失败', error: error.message });
+    }
+  }
 };
 
 // 更新用户
-exports.updateUser = (req, res) => {
-  const index = users.findIndex(u => u.id === req.params.id);
-  if (index !== -1) {
-    users[index] = { ...users[index], ...req.body };
-    res.json(users[index]);
-  } else {
-    res.status(404).json({ message: '用户不存在' });
+exports.updateUser = async (req, res) => {
+  try {
+    const { studentId, name, role, className, major, email } = req.body;
+    
+    // 构建更新字段
+    const updates = [];
+    const params = [];
+    
+    if (studentId !== undefined) {
+      updates.push('studentId = ?');
+      params.push(studentId);
+    }
+    if (name !== undefined) {
+      updates.push('name = ?');
+      params.push(name);
+    }
+    if (role !== undefined) {
+      updates.push('role = ?');
+      params.push(role);
+    }
+    if (className !== undefined) {
+      updates.push('className = ?');
+      params.push(className);
+    }
+    if (major !== undefined) {
+      updates.push('major = ?');
+      params.push(major);
+    }
+    if (email !== undefined) {
+      updates.push('email = ?');
+      params.push(email);
+    }
+    
+    // 添加ID参数
+    params.push(req.params.id);
+    
+    const result = await run(
+      `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
+      params
+    );
+    
+    if (result.changes > 0) {
+      const updatedUser = await getOne('SELECT * FROM users WHERE id = ?', [req.params.id]);
+      res.json(updatedUser);
+    } else {
+      res.status(404).json({ message: '用户不存在' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: '更新用户失败', error: error.message });
   }
 };
 
 // 删除用户
-exports.deleteUser = (req, res) => {
-  const index = users.findIndex(u => u.id === req.params.id);
-  if (index !== -1) {
-    users.splice(index, 1);
-    res.json({ message: '用户已删除' });
-  } else {
-    res.status(404).json({ message: '用户不存在' });
+exports.deleteUser = async (req, res) => {
+  try {
+    const result = await run('DELETE FROM users WHERE id = ?', [req.params.id]);
+    if (result.changes > 0) {
+      res.json({ message: '用户删除成功' });
+    } else {
+      res.status(404).json({ message: '用户不存在' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: '删除用户失败', error: error.message });
   }
 };
 
 // 用户登录
-exports.loginUser = (req, res) => {
-  const { studentId, password } = req.body;
-  // 简化的登录逻辑，实际应用中应该使用密码哈希
-  const user = users.find(u => u.studentId === studentId);
-  
-  if (user) {
-    // 这里假设所有用户的默认密码都是123456
-    if (password === '123456') {
+exports.loginUser = async (req, res) => {
+  try {
+    const { studentId, password } = req.body;
+    
+    // 查找用户
+    const user = await getOne('SELECT * FROM users WHERE studentId = ?', [studentId]);
+    
+    if (!user) {
+      return res.status(401).json({ message: '用户不存在' });
+    }
+    
+    // 这里简化处理，实际应该使用密码哈希验证
+    // 暂时使用学号作为密码
+    if (password === user.studentId) {
       res.json({
-        id: user.id,
-        studentId: user.studentId,
-        name: user.name,
-        role: user.role,
-        token: `mock-token-${user.id}` // 模拟JWT token
+        message: '登录成功',
+        user: {
+          id: user.id,
+          studentId: user.studentId,
+          name: user.name,
+          role: user.role
+        }
       });
     } else {
       res.status(401).json({ message: '密码错误' });
     }
-  } else {
-    res.status(401).json({ message: '用户不存在' });
+  } catch (error) {
+    res.status(500).json({ message: '登录失败', error: error.message });
   }
 };
