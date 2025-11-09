@@ -613,6 +613,7 @@ export default {
 .assignment-detail-container {
   background-color: #f5f7fa;
   padding: 20px;
+  width: 100%;
   min-height: calc(100vh - 60px); /* 考虑Header高度 */
 }
 
