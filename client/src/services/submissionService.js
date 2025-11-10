@@ -178,6 +178,17 @@ export const validateFileType = (file, allowedTypes) => {
   return allowedTypes.includes(fileExtension);
 };
 
+// 获取学生的作业提交状态
+export const getStudentSubmissionStatus = async (studentId, assignmentId) => {
+  try {
+    const response = await api.get(`/submissions/status/${studentId}/${assignmentId}`);
+    return response.data;
+  } catch (error) {
+    console.error('获取学生提交状态失败:', error);
+    throw error;
+  }
+};
+
 // 验证文件名是否符合规则
 export const validateFileName = (fileName, namingRule, userInfo, assignmentTitle) => {
   try {

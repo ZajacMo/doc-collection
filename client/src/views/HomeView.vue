@@ -175,10 +175,6 @@ export default {
         value: computed(() => totalAssignments.value)
       },
       {
-        label: '已提交',
-        value: computed(() => submittedAssignments.value)
-      },
-      {
         label: '待提交',
         value: computed(() => pendingAssignments.value)
       },
@@ -272,7 +268,13 @@ export default {
         }).length;
         
         // 计算逾期作业数量
-        overdueAssignments.value = submissions.value.filter(s => s.status === 'late').length;
+        // 统计两部分：1) 已提交但逾期的作业 2) 未提交但已过期的作业
+        const submittedLateCount = submissions.value.filter(s => s.status === 'late').length;
+        const notSubmittedExpiredCount = assignments.value.filter(assignment => {
+          const isSubmitted = submissions.value.some(s => s.assignmentId === assignment.id);
+          return !isSubmitted && isAssignmentExpired(assignment.deadline);
+        }).length;
+        overdueAssignments.value = submittedLateCount + notSubmittedExpiredCount;
         
         // 获取最近的5条提交记录
         recentSubmissionsData.value = [...submissions.value]

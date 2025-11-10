@@ -22,6 +22,9 @@ router.put('/:id', submissionController.updateSubmission);
 // 删除提交
 router.delete('/:id', submissionController.deleteSubmission);
 
+// 获取学生的作业提交状态
+router.get('/status/:studentId/:assignmentId', submissionController.getStudentSubmissionStatus);
+
 // 下载提交的文件路由已移除，文件下载由uploadController处理
 
 module.exports = router;

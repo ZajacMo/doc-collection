@@ -246,3 +246,79 @@ exports.deleteSubmission = async (req, res) => {
 };
 
 // 下载提交的文件功能已移除，文件下载由uploadController处理
+
+// 获取学生的作业提交状态
+// 返回值："进行中"（还没逾期也没提交），"已逾期"，"已提交"（已提交未过期可修改），"已完结"（已提交已过期不可修改）
+exports.getStudentSubmissionStatus = async (req, res) => {
+  try {
+    const { studentId, assignmentId } = req.params;
+    
+    // 检查参数
+    if (!studentId || !assignmentId) {
+      return res.status(400).json({ message: '缺少必要参数：studentId和assignmentId' });
+    }
+    
+    // 获取作业信息
+    const assignment = await getOne(
+      'SELECT id, title, deadline FROM assignments WHERE id = ?',
+      [assignmentId]
+    );
+    
+    if (!assignment) {
+      return res.status(404).json({ message: '作业不存在' });
+    }
+    
+    // 检查作业截止时间
+    const deadline = new Date(assignment.deadline);
+    const now = new Date();
+    const isExpired = now > deadline;
+    
+    // 获取学生的提交记录
+    const submission = await getOne(
+      'SELECT id, status, submitTime FROM submissions WHERE studentId = ? AND assignmentId = ?',
+      [studentId, assignmentId]
+    );
+    
+    let status;
+    let message;
+    
+    if (submission) {
+      // 有提交记录
+      if (isExpired) {
+        // 已过期
+        status = "已完结";
+        message = "作业已提交且已过期，不可修改";
+      } else {
+        // 未过期
+        status = "已提交";
+        message = "作业已提交且未过期，可以修改";
+      }
+    } else {
+      // 没有提交记录
+      if (isExpired) {
+        // 已过期
+        status = "已逾期";
+        message = "作业已过期且未提交";
+      } else {
+        // 未过期
+        status = "进行中";
+        message = "作业未逾期且未提交";
+      }
+    }
+    
+    res.json({
+      studentId,
+      assignmentId,
+      assignmentTitle: assignment.title,
+      deadline: assignment.deadline,
+      isExpired,
+      status,
+      message,
+      submissionId: submission?.id || null,
+      submitTime: submission?.submitTime || null
+    });
+  } catch (error) {
+    console.error('获取学生提交状态失败:', error);
+    res.status(500).json({ message: '获取学生提交状态失败', error: error.message });
+  }
+};

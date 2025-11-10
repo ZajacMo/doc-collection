@@ -121,14 +121,6 @@
                       详情
                     </el-button>
                     <el-button 
-                      v-if="row.deadline && !isAssignmentExpired(row.deadline) && row.status !== 'submitted'"
-                      type="success" 
-                      size="small" 
-                      @click="goToSubmit(row.id)"
-                    >
-                      提交
-                    </el-button>
-                    <el-button 
                       v-if="userInfo?.role === 'admin'"
                       type="danger" 
                       size="small" 
@@ -451,7 +443,7 @@ export default {
   width: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
 }
 
 /* 移动端响应式样式 */
