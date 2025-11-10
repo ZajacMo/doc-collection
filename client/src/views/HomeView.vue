@@ -1,139 +1,22 @@
 <template>
   <div class="home-container">
     <!-- 欢迎信息 -->
-    <div class="welcome-section">
-      <h1>欢迎回来！</h1>
-      <p class="welcome-subtitle">今天是 {{ currentDate }}</p>
-    </div>
-
-
+    <welcome-section :current-date="currentDate" />
+    
     <!-- 作业概览 -->
-    <div class="overview-section">
-      <h2>作业概览</h2>
-      <div class="overview-cards">
-        <el-card 
-          v-for="(card, index) in statsCards" 
-          :key="index" 
-          class="overview-card"
-        >
-          <div class="card-content">
-            <div class="card-info">
-              <div class="card-number">{{ card.value }}</div>
-              <div class="card-label">{{ card.label }}</div>
-            </div>
-          </div>
-        </el-card>
-      </div>
-    </div>
-
+    <stats-section :stats-cards="statsCards" />
+    
     <!-- 近期作业 -->
-    <div class="recent-assignments-section">
-      <h2>近期作业</h2>
-      <el-table :data="recentAssignments" style="width: 100%">
-        <el-table-column prop="title" label="作业名称" width="300"></el-table-column>
-        <el-table-column prop="deadline" label="截止日期">
-            <template v-slot="{ row }">
-              <div v-if="row && row.deadline">
-                <span :class="{
-                  'text-danger': row.deadline && isAssignmentExpired(row.deadline),
-                  'text-warning': row.deadline && isAssignmentUrgent(row.deadline)
-                }">
-                  {{ row.deadline && formatDate(row.deadline) }}
-                </span>
-              </div>
-              <span v-else>-</span>
-            </template>
-          </el-table-column>
-        <el-table-column prop="status" label="状态" min-width="100">
-              <template v-slot="{ row }">
-                <div>
-                    <el-tag
-                      :type="getStatusTag(row).type"
-                      :key="getStatusTag(row).key"
-                    >
-                      {{ getStatusTag(row).text }}
-                      <template #suffix>
-                          <el-icon v-if="getStatusTag(row).key !== 'default' && getStatusTag(row).key !== 'submitted'">
-                            <CircleClose />
-                          </el-icon>
-                        </template>
-                    </el-tag>
-                  </div>
-              </template>
-            </el-table-column>
-        <el-table-column label="操作" min-width="120" fixed="right">
-          <template v-slot="{ row }">
-            <div v-if="row && row.id">
-              <el-button 
-                type="primary" 
-                size="small" 
-                @click="goToDetail(row.id)"
-              >
-                详情
-              </el-button>
-              <el-button 
-                v-if="row.deadline && !isAssignmentExpired(row.deadline) && row.status !== 'submitted'"
-                type="success" 
-                size="small" 
-                @click="goToSubmit(row.id)"
-              >
-                提交
-              </el-button>
-            </div>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
-
+    <recent-assignments-section 
+      :recent-assignments="recentAssignments"
+      @go-to-detail="goToDetail"
+    />
+    
     <!-- 最近提交记录 -->
-    <div class="recent-submissions">
-      <h3>最近提交记录</h3>
-      <el-table 
-        :data="recentSubmissionsData" 
-        style="width: 100%"
-        stripe
-        border
-        max-height="600"
-      >
-        <el-table-column prop="assignmentTitle" label="作业名称" min-width="180"></el-table-column>
-        <el-table-column prop="submitTime" label="提交时间" min-width="140">
-          <template #default="scope">
-            {{ formatDate(scope.row.submitTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="fileName" label="文件名" min-width="180"></el-table-column>
-        <el-table-column prop="status" label="状态" min-width="80">
-          <template #default="scope">
-            <el-tag 
-              v-if="scope.row.status === 'submitted'"
-              type="success"
-            >
-              已提交
-            </el-tag>
-            <el-tag 
-              v-if="scope.row.status === 'late'"
-              type="danger"
-            >
-              已逾期
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" min-width="100" fixed="right">
-          <template #default="scope">
-            <el-button 
-              type="primary" 
-              size="small" 
-              @click="goToDetail(scope.row.assignmentId)"
-            >
-              查看
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
-
-
+    <recent-submissions-section 
+      :recent-submissions-data="recentSubmissionsData"
+      @go-to-detail="goToDetail"
+    />
   </div>
 </template>
 
@@ -141,17 +24,24 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { CircleClose, Loading } from '@element-plus/icons-vue';
 import { getCurrentUser, logoutUser } from '../services/userService';
 import { getAllAssignments, getTimeRemaining, isAssignmentExpired } from '../services/assignmentService';
 import { getSubmissionsByUser } from '../services/submissionService';
 
-// 合并HomeView和UserProfileView组件
+// 导入子组件
+import WelcomeSection from '../components/Home/WelcomeSection.vue';
+import StatsSection from '../components/Home/StatsSection.vue';
+import RecentAssignmentsSection from '../components/Home/RecentAssignmentsSection.vue';
+import RecentSubmissionsSection from '../components/Home/RecentSubmissionsSection.vue';
+
+// 主页面组件
 export default {
   name: 'HomeView',
   components: {
-    CircleClose,
-    Loading
+    WelcomeSection,
+    StatsSection,
+    RecentAssignmentsSection,
+    RecentSubmissionsSection
   },
   setup() {
     const router = useRouter();
@@ -167,6 +57,15 @@ export default {
     const overdueAssignments = ref(0); // 新增：逾期作业数量
     
 
+    
+    // 检查作业是否紧急（24小时内截止）
+    const isAssignmentUrgent = (deadline) => {
+      if (!deadline) return false;
+      const now = new Date();
+      const deadlineDate = new Date(deadline);
+      const diff = deadlineDate - now;
+      return diff > 0 && diff < 24 * 60 * 60 * 1000;
+    };
     
     // 统计卡片数据
     const statsCards = ref([
@@ -187,40 +86,6 @@ export default {
         value: computed(() => overdueAssignments.value)
       }
     ])
-    
-    // 格式化日期
-    const formatDate = (dateString) => {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-    };
-    
-    // 检查作业是否紧急（24小时内截止）
-    const isAssignmentUrgent = (deadline) => {
-      const timeRemaining = getTimeRemaining(deadline);
-      return !timeRemaining.expired && timeRemaining.days === 0 && timeRemaining.hours < 24;
-    };
-    
-    // 获取作业状态标签配置的函数
-    const getStatusTag = (row) => {
-      if (!row) {
-        return { type: 'info', text: '-', key: 'empty' };
-      }
-      
-      if (row.status === 'submitted') {
-        return { type: 'success', text: '已提交', key: 'submitted' };
-      }
-      if (row.status === 'late') {
-        return { type: 'danger', text: '已逾期', key: 'late' };
-      }
-      if (row.deadline && isAssignmentExpired(row.deadline)) {
-        return { type: 'danger', text: '未提交(逾期)', key: 'notSubmittedExpired' };
-      }
-      if (row.deadline && isAssignmentUrgent(row.deadline)) {
-        return { type: 'warning', text: '未提交(紧急)', key: 'notSubmittedUrgent' };
-      }
-      return { type: 'info', text: '未提交', key: 'default' };
-    }
     
     // 获取近期作业（带状态）
     const recentAssignments = computed(() => {
@@ -348,10 +213,6 @@ export default {
       overdueAssignments,
       statsCards,
       recentAssignments,
-      formatDate,
-      isAssignmentExpired,
-      isAssignmentUrgent,
-      getStatusTag,
       goToDetail,
       goToSubmit,
       goToProfile,
@@ -372,131 +233,10 @@ export default {
   overflow: auto;
 }
 
-.welcome-section {
-  margin-bottom: 30px;
-}
-
-.welcome-section h1 {
-  color: #303133;
-  margin-bottom: 10px;
-}
-
-.welcome-subtitle {
-  color: #909399;
-  font-size: 14px;
-}
-
-
-/* 作业概览样式 */
-.overview-section {
-  margin-bottom: 30px;
-}
-
-.overview-section h2 {
-  color: #303133;
-  margin-bottom: 20px;
-}
-
-.overview-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-}
-
-.overview-card {
-  background-color: white;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.overview-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.card-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 20px;
-}
-
-.card-info {
-  width: 100%;
-}
-
-.card-number {
-  font-size: 24px;
-  font-weight: bold;
-  color: #303133;
-}
-
-.card-label {
-  font-size: 14px;
-  color: #909399;
-  margin-top: 5px;
-}
-
-/* 近期作业样式 */
-.recent-assignments-section {
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.recent-assignments-section h2 {
-  color: #303133;
-  margin-bottom: 20px;
-}
-
-/* 最近提交记录样式 */
-.recent-submissions {
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.recent-submissions h3 {
-  color: #303133;
-  margin-bottom: 20px;
-  font-size: 18px;
-}
-
-/* 状态文本样式 */
-.text-danger {
-  color: #f56c6c;
-}
-
-.text-warning {
-  color: #e6a23c;
-}
-
 /* 响应式调整 */
 @media (max-width: 768px) {
   .home-container {
     padding: 15px;
-  }
-  
-
-  .recent-assignments-section,
-  .recent-submissions {
-    padding: 20px 15px;
-    width: 100%;
-  }
-  
-  .overview-cards {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-  
-
-  
-  .el-table {
-    width: 100%;
-    overflow-x: auto;
   }
 }
 </style>

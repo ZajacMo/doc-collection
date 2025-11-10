@@ -111,15 +111,19 @@ exports.getAllAssignments = async (req, res) => {
   }
 };
 
-// 获取单个作业
+// 获取单个作业及其提交记录
 exports.getAssignmentById = async (req, res) => {
   try {
-    const assignment = await getOne('SELECT * FROM assignments WHERE id = ?', [req.params.id]);
-    if (assignment) {
-      res.json(assignment);
-    } else {
-      res.status(404).json({ message: '作业不存在' });
+    const assignmentId = req.params.id;
+    
+    // 检查作业是否存在
+    const assignment = await getOne('SELECT * FROM assignments WHERE id = ?', [assignmentId]);
+    if (!assignment) {
+      return res.status(404).json({ message: '作业不存在' });
     }
+    
+    // 将作业信息和提交记录一起返回
+    res.json(assignment);
   } catch (error) {
     res.status(500).json({ message: '获取作业信息失败', error: error.message });
   }

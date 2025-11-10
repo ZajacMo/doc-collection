@@ -73,6 +73,10 @@ export default {
         return ['submitted', 'late', 'expired', 'urgent', 'in_progress'].includes(value);
       }
     },
+    userSubmission: {
+      type: Object,
+      required: true
+    }
   },
   computed: {
       // 根据状态获取提示配置

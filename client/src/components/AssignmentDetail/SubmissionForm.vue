@@ -59,25 +59,24 @@
           :multiple="false"
           :on-remove="handleRemove"
           :disabled="isAssignmentExpired"
+          drag
         >
           <el-button 
             size="small" 
             type="primary"
             :disabled="isAssignmentExpired"
           >
-            {{ isAssignmentExpired ? '作业已过期，无法上传' : '选择文件' }}
+            {{ isAssignmentExpired ? '作业已过期，无法上传' : !!submissionInfo && submissionInfo.submissionInfo ? '重新上传' : '选择文件' }}
           </el-button>
+          <div slot="default">
+            <el-tag v-if="submissionInfo && submissionInfo.submissionInfo" type="success" size="small" style="margin-top: 5px; display: block;">
+              已提交：{{ submissionInfo.submissionInfo.fileName }}
+            </el-tag>
+          </div>
           <div slot="tip" class="el-upload__tip">
             支持的文件大小不超过20MB
           </div>
         </el-upload>
-        <el-alert
-          v-if="uploadSuccess"
-          title="作业提交成功！"
-          type="success"
-          :closable="false"
-          show-icon
-        />
       </el-form-item>
     </el-form>
   </div>
@@ -102,6 +101,10 @@ export default {
     },
     isAssignmentExpired: {
       type: Boolean,
+      required: true
+    },
+    submissionInfo: {
+      type: Object,
       required: true
     }
   },

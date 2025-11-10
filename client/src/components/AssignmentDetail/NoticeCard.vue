@@ -32,6 +32,7 @@ export default {
   computed: {
     // 判断是否应该显示通知
     shouldShowNotice() {
+      // console.log(this.assignmentStatus);
       // 当状态为expired或late时显示通知
       return ['expired', 'late'].includes(this.assignmentStatus);
     },

@@ -54,7 +54,7 @@ const handleMenuSelect = (index) => {
   flex-shrink: 0;
   width: 240px;
   @media (max-width: 968px) {
-    width: 200px;
+    width: 100px;
   }
   @media (max-width: 580px) {
     width: 60px;

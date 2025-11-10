@@ -30,26 +30,25 @@
 
       <!-- 提交作业表单 - 仅当用户未提交且作业未过期时显示 -->
       <SubmissionForm 
-        v-if="!userSubmission && !isAssignmentExpired(assignment.deadline)" 
+        v-if="!isAssignmentExpired(assignment.deadline)" 
         :assignment-id="assignment.id"
         :assignment-name="assignment.title"
         :is-assignment-expired="isAssignmentExpired(assignment.deadline)"
+        :submission-info="submissionInfo"
         @submission-success="loadData"
       />
       
       <!-- 已提交作业状态卡片 - 当用户已提交作业时显示 -->
-          <SubmittedStatusCard 
-            v-else-if="userSubmission" 
-            :user-submission="userSubmission"
-            :status="assignmentStatus"
-            :is-assignment-expired="isAssignmentExpired(assignment.deadline)"
-            @download="downloadMyFile"
-          />
+      <!-- <SubmittedStatusCard 
+        v-else-if="submissionInfo" 
+        :user-submission="submissionInfo"
+        :status="assignmentStatus"
+        :is-assignment-expired="isAssignmentExpired(assignment.deadline)"
+        @download="downloadMyFile"
+      /> -->
       
       <!-- 作业状态通知提示 - 根据assignmentStatus动态显示 -->
-      <NoticeCard 
-        :assignment-status="assignmentStatus"
-      />
+      <NoticeCard :assignment-status="assignmentStatus"/>
 
       <!-- 操作按钮 - 仅保留管理员操作 -->
       <div class="action-buttons">
@@ -75,9 +74,9 @@
     <!-- 提交列表 -->
     <SubmissionList 
       v-if="assignment && ((userInfo?.role === 'admin' && submissionList.length > 0) || 
-                         (userSubmission && userInfo?.role !== 'admin'))"
+                         (submissionInfo && userInfo?.role !== 'admin'))"
       :submission-list="submissionList"
-      :user-submission="userSubmission"
+      :user-submission="submissionInfo"
       :is-admin="userInfo?.role === 'admin'"
       @download="downloadFile"
       @delete="deleteSubmission"
@@ -115,10 +114,10 @@ import {
 } from '../services/assignmentService';
 import { 
   getSubmissionsByAssignment, 
-  getSubmissionByUserAndAssignment, 
+  // getSubmissionByUserAndAssignment, 
   deleteSubmission as deleteSubmissionAPI, 
   downloadFile as downloadFileAPI,
-  getStudentSubmissionStatus
+  getStudentSubmission
 } from '../services/submissionService';
 
 export default {
@@ -137,12 +136,12 @@ export default {
   setup() {
     const userInfo = ref(getCurrentUserInfo());
     const assignment = ref(null);
-    const userSubmission = ref(null);
+    const submissionInfo = ref(null);
     const submissionList = ref([]);
     const allStudents = ref(0);
     const loading = ref(true);
     const updateDialogVisible = ref(false);
-    // 使用计算属性assignmentStatus代替单独的submissionStatus变量
+    const assignmentStatus = ref('in_progress');
     
     // 检查作业是否已过期
     const isAssignmentExpired = (deadline) => {
@@ -158,30 +157,7 @@ export default {
       return diff > 0 && diff < 24 * 60 * 60 * 1000;
     };
     
-    // 计算作业状态
-    const assignmentStatus = computed(() => {
-      if (!assignment.value) return 'in_progress';
-      
-      // 使用userSubmission的状态（已包含从API获取的状态）
-      if (userSubmission.value) {
-        if (userSubmission.value.status === 'submitted') {
-          return 'submitted';
-        } else if (userSubmission.value.status === 'late') {
-          return 'late';
-        }
-      }
-      
-      // 检查截止日期相关状态
-      if (isAssignmentExpired(assignment.value.deadline)) {
-        return 'expired';
-      } else if (isAssignmentUrgent(assignment.value.deadline)) {
-        return 'urgent';
-      }
-      
-      // 默认状态
-      return 'in_progress';
-    });
-    
+  
     // 使用Vue Router获取路由信息
     const route = useRoute();
     const router = useRouter();
@@ -193,8 +169,6 @@ export default {
     const getAssignmentIdFromUrl = () => {
       // 优先从route params获取作业ID，其次从query获取
       let assignmentId = route.params.id || route.query.id;
-      
-      console.log('Using assignmentId:', assignmentId);
       return assignmentId;
     };
     
@@ -215,18 +189,17 @@ export default {
         assignmentId = String(assignmentId);
         
         // 获取作业详情
-        const assignmentData = await getAssignmentById(assignmentId);
-        assignment.value = assignmentData;
+        assignment.value = await getAssignmentById(assignmentId);
+        submissionInfo.value  = await getStudentSubmission(userInfo.value.studentId, assignmentId);
+        assignmentStatus.value = submissionInfo.value["status"];
+        console.log("submissionInfo.value:",submissionInfo.value);
+
         
         // 使用getCurrentUserInfo获取正确的用户信息
         const currentUserInfo = getCurrentUserInfo();
-        console.log('Current User Info:', currentUserInfo);
-        
-        // 修正：getCurrentUserInfo直接返回用户对象，不需要访问.user属性
+        // console.log('Current User Info:', currentUserInfo);
         const userIdFromUserData = currentUserInfo?.studentId;
         const userIdFromLocalStorage = localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.studentId : null;
-        
-        // 获取学生ID（用于提交状态查询）
         const studentId = userIdFromUserData || userIdFromLocalStorage;
         
         // 保存到localStorage以便下次使用
@@ -237,37 +210,8 @@ export default {
         if (studentName) {
           localStorage.setItem('studentName', studentName);
         }
-        
-        // 加载用户提交记录 - 使用用户ID进行查询，这是API期望的参数
-        // 从用户数据中获取正确的用户ID
         const userId = currentUserInfo?.id || (localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.id : null);
-        
-        if (userId) {
-          const userSubmissionData = await getSubmissionByUserAndAssignment(userId, assignmentId);
-          userSubmission.value = userSubmissionData;
-          console.log('Loaded user submission:', userSubmission.value);
-          
-          // 调用新的API获取学生提交状态 - 结果会被assignmentStatus计算属性使用
-          try {
-            // 使用前面定义的studentId或userId
-            const statusStudentId = studentId || userId;
-            const statusData = await getStudentSubmissionStatus(statusStudentId, assignmentId);
-            // 保存原始提交记录状态，供assignmentStatus计算属性使用
-            if (statusData) {
-              // 如果获取到了状态数据，更新userSubmission的状态
-              if (userSubmission.value) {
-                userSubmission.value.status = statusData?.status || statusData;
-              }
-              console.log('Loaded submission status:', statusData?.status || statusData);
-            }
-          } catch (error) {
-            console.error('获取学生提交状态失败:', error);
-            // 如果API调用失败，可以保持现有的逻辑作为后备
-          }
-        } else {
-          console.error('无法获取用户ID，无法加载提交记录');
-        }
-        
+                
         // 如果是管理员，获取所有提交记录和学生总数
         if (currentUserInfo?.role === 'admin') {
           const submissionListData = await getSubmissionsByAssignment(assignmentId);
@@ -280,7 +224,7 @@ export default {
               // 过滤出角色为'student'的用户数量
               const studentCount = allUsersData.filter(user => user.role === 'student').length;
               allStudents.value = studentCount;
-              console.log('AssignmentDetailView - 学生总数:', studentCount);
+              // console.log('AssignmentDetailView - 学生总数:', studentCount);
             } else {
               console.error('AssignmentDetailView - 获取用户列表失败，数据格式错误');
               allStudents.value = 0;
@@ -292,7 +236,7 @@ export default {
         }
         
       } catch (error) {
-        ElMessage.error('加载作业详情失败');
+        ElMessage.error('加载作业详情失败', error);
         console.error('加载作业详情失败:', error);
       } finally {
         loading.value = false;
@@ -356,8 +300,8 @@ export default {
     
     // 下载我的文件
     const downloadMyFile = () => {
-      if (userSubmission.value) {
-        downloadFile(userSubmission.value.fileId, userSubmission.value.fileName);
+      if (submissionInfo.value) {
+        downloadFile(submissionInfo.value.fileId, submissionInfo.value.fileName);
       }
     };
     
@@ -395,14 +339,11 @@ export default {
       loadData();
     });
     
-    // 在控制台输出userSubmission的值
-    console.log('userSubmission:', userSubmission);
     
     return {
       userInfo,
       assignment,
-      userSubmission,
-
+      submissionInfo,
       submissionList,
       allStudents,
       loading,
@@ -416,7 +357,8 @@ export default {
       handleUpdateAssignment,
       downloadFile,
       downloadMyFile,
-      deleteSubmission
+      deleteSubmission,
+      loadData
     };
   }
 }
@@ -546,9 +488,6 @@ export default {
   white-space: pre-wrap;
 }
 
-/* 文件命名规则相关样式已移除 */
-
-/* 文件类型相关样式已移除 */
 
 .action-buttons {
   display: flex;
@@ -656,7 +595,5 @@ export default {
   .el-table {
     overflow-x: auto;
   }
-  
-  /* 响应式文件命名规则样式已移除 */
 }
 </style>

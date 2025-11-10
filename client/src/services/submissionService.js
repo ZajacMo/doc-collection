@@ -47,38 +47,38 @@ export const getSubmissionsByAssignment = async (assignmentId) => {
 };
 
 // 根据用户ID和作业ID获取提交（支持获取历史记录）
-export const getSubmissionByUserAndAssignment = async (userId, assignmentId, includeHistory = false) => {
-  try {
-    // 服务器端只有获取用户所有提交的端点，所以我们先获取所有提交，然后在客户端过滤
-    const endpoint = `/submissions/user/${userId}`;
-    const response = await api.get(endpoint);
+// export const getSubmissionByUserAndAssignment = async (userId, assignmentId, includeHistory = false) => {
+//   try {
+//     // 服务器端只有获取用户所有提交的端点，所以我们先获取所有提交，然后在客户端过滤
+//     const endpoint = `/submissions/user/${userId}`;
+//     const response = await api.get(endpoint);
     
-    // 在客户端根据作业ID过滤提交
-    if (Array.isArray(response)) {
-      const filteredSubmissions = response.filter(submission => 
-        submission.assignmentId === assignmentId
-      );
+//     // 在客户端根据作业ID过滤提交
+//     if (Array.isArray(response)) {
+//       const filteredSubmissions = response.filter(submission => 
+//         submission.assignmentId === assignmentId
+//       );
       
-      // 如果只需要最新的提交，返回第一个匹配的
-      if (!includeHistory && filteredSubmissions.length > 0) {
-        return filteredSubmissions[0];
-      }
+//       // 如果只需要最新的提交，返回第一个匹配的
+//       if (!includeHistory && filteredSubmissions.length > 0) {
+//         return filteredSubmissions[0];
+//       }
       
-      // 返回所有匹配的提交（历史记录）
-      return filteredSubmissions.length > 0 ? filteredSubmissions : null;
-    }
+//       // 返回所有匹配的提交（历史记录）
+//       return filteredSubmissions.length > 0 ? filteredSubmissions : null;
+//     }
     
-    // 处理响应不是数组的情况
-    return null;
-  } catch (error) {
-    // 如果没有找到，返回null而不是抛出错误
-    if (error.response?.status === 404) {
-      return null;
-    }
-    console.error('获取用户作业提交记录失败:', error);
-    throw error;
-  }
-};
+//     // 处理响应不是数组的情况
+//     return null;
+//   } catch (error) {
+//     // 如果没有找到，返回null而不是抛出错误
+//     if (error.response?.status === 404) {
+//       return null;
+//     }
+//     console.error('获取用户作业提交记录失败:', error);
+//     throw error;
+//   }
+// };
 
 // 提交作业
 export const submitAssignment = async (formData) => {
@@ -179,10 +179,10 @@ export const validateFileType = (file, allowedTypes) => {
 };
 
 // 获取学生的作业提交状态
-export const getStudentSubmissionStatus = async (studentId, assignmentId) => {
+export const getStudentSubmission = async (studentId, assignmentId) => {
   try {
     const response = await api.get(`/submissions/status/${studentId}/${assignmentId}`);
-    return response.data;
+    return response;
   } catch (error) {
     console.error('获取学生提交状态失败:', error);
     throw error;

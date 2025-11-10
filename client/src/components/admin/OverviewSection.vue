@@ -7,8 +7,8 @@
             <i class="el-icon-user"></i>
           </div>
           <div class="overview-info">
-            <div class="overview-number">{{ totalUsers }}</div>
-            <div class="overview-label">总用户数</div>
+            <div class="overview-number">{{ totalStudents }}</div>
+            <div class="overview-label">总学生数</div>
           </div>
         </div>
       </el-card>
@@ -78,7 +78,7 @@
 export default {
   name: 'OverviewSection',
   props: {
-    totalUsers: {
+    totalStudents: {
       type: Number,
       default: 0
     },

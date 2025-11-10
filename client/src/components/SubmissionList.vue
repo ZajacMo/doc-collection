@@ -8,9 +8,9 @@
       border
       max-height="600"
     >
-      <el-table-column type="index" label="序号" min-width="60"></el-table-column>
-      <el-table-column prop="studentId" label="学号" min-width="100"></el-table-column>
-      <el-table-column prop="studentName" label="姓名" min-width="80"></el-table-column>
+      <el-table-column type="index" label="序号" min-width="60" v-if="isAdmin"></el-table-column>
+      <el-table-column prop="studentId" label="学号" min-width="100" v-if="isAdmin"></el-table-column>
+      <el-table-column prop="studentName" label="姓名" min-width="80" v-if="isAdmin"></el-table-column>
       <el-table-column prop="submitTime" label="提交时间" min-width="140">
         <template #default="scope">
           {{ formatDate(scope.row.submitTime) }}
@@ -29,7 +29,7 @@
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" min-width="120" fixed="right">
+      <el-table-column label="操作" min-width="120" fixed="right" v-if="isAdmin">
         <template #default="scope">
           <el-button 
             v-if="scope.row.fileId"

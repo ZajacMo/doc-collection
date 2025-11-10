@@ -249,7 +249,7 @@ exports.deleteSubmission = async (req, res) => {
 
 // 获取学生的作业提交状态
 // 返回值："进行中"（还没逾期也没提交），"已逾期"，"已提交"（已提交未过期可修改），"已完结"（已提交已过期不可修改）
-exports.getStudentSubmissionStatus = async (req, res) => {
+exports.getStudentSubmission = async (req, res) => {
   try {
     const { studentId, assignmentId } = req.params;
     
@@ -272,50 +272,17 @@ exports.getStudentSubmissionStatus = async (req, res) => {
     const deadline = new Date(assignment.deadline);
     const now = new Date();
     const isExpired = now > deadline;
-    
-    // 获取学生的提交记录
+    const isUrgent = isExpired && (now - deadline) <= 24 * 60 * 60 * 1000; // 24小时内逾期
     const submission = await getOne(
-      'SELECT id, status, submitTime FROM submissions WHERE studentId = ? AND assignmentId = ?',
+      'SELECT id, fileName, fileSize, submitTime FROM submissions WHERE studentId = ? AND assignmentId = ?',
       [studentId, assignmentId]
     );
-    
-    let status;
-    let message;
-    
-    if (submission) {
-      // 有提交记录
-      if (isExpired) {
-        // 已过期
-        status = "已完结";
-        message = "作业已提交且已过期，不可修改";
-      } else {
-        // 未过期
-        status = "已提交";
-        message = "作业已提交且未过期，可以修改";
-      }
-    } else {
-      // 没有提交记录
-      if (isExpired) {
-        // 已过期
-        status = "已逾期";
-        message = "作业已过期且未提交";
-      } else {
-        // 未过期
-        status = "进行中";
-        message = "作业未逾期且未提交";
-      }
-    }
-    
+    let status = submission ? (isExpired ? "expired" : "submitted") : (isExpired ? "late" : isUrgent ? "urgent" : "in_progress");
     res.json({
       studentId,
       assignmentId,
-      assignmentTitle: assignment.title,
-      deadline: assignment.deadline,
-      isExpired,
       status,
-      message,
-      submissionId: submission?.id || null,
-      submitTime: submission?.submitTime || null
+      submissionInfo: submission? {...submission} : null
     });
   } catch (error) {
     console.error('获取学生提交状态失败:', error);

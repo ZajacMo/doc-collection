@@ -11,8 +11,8 @@
       <!-- 系统概览 -->
       <el-tab-pane label="系统概览" name="overview">
         <overview-section 
-          :total-users="totalUsers" 
-          :total-assignments="totalAssignments"
+            :total-students="totalStudents"
+            :total-assignments="totalAssignments"
           :total-submissions="totalSubmissions"
           :pending-assignments="pendingAssignments"
           :recent-activities-data="recentActivitiesData"
@@ -113,7 +113,7 @@ export default {
     const currentEditUser = ref(null);
     
     // 系统概览数据
-    const totalUsers = computed(() => allUsers.value.length);
+    const totalStudents = computed(() => allUsers.value.filter(user => user.role === 'student').length);
     const totalAssignments = computed(() => allAssignments.value.length);
     const totalSubmissions = computed(() => allSubmissions.value.length);
     const pendingAssignments = computed(() => {
@@ -351,7 +351,7 @@ export default {
       editUserDialogVisible,
       createAssignmentDialogVisible,
       currentEditUser,
-      totalUsers,
+      totalStudents,
       totalAssignments,
       totalSubmissions,
       pendingAssignments,
