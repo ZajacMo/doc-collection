@@ -72,7 +72,8 @@ const createTables = async () => {
         deadline TEXT NOT NULL,
         createTime TEXT NOT NULL,
         updateTime TEXT NOT NULL,
-        fileTypes TEXT NOT NULL
+        fileTypes TEXT NOT NULL,
+        namingRule TEXT
       );
     `);
     

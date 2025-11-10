@@ -20,11 +20,18 @@
             <div class="assignment-header">
               <h1 class="assignment-title">{{ assignment.title }}</h1>
               <el-tag 
-                v-if="userSubmission && userSubmission.status === 'submitted'"
+                v-if="userSubmission && userSubmission.status === 'submitted' && !isAssignmentExpired(assignment.deadline)"
                 type="success"
                 size="large"
               >
                 已提交
+              </el-tag>
+              <el-tag 
+                v-else-if="userSubmission && (userSubmission.status === 'late' || (userSubmission.status === 'submitted' && isAssignmentExpired(assignment.deadline)))"
+                type="danger"
+                size="large"
+              >
+                已逾期
               </el-tag>
               <el-tag 
                 v-else-if="isAssignmentExpired(assignment.deadline)"
@@ -79,40 +86,191 @@
               <p>{{ assignment.description || '暂无描述' }}</p>
             </div>
 
-            <!-- 允许的文件类型 -->
-            <div class="file-types-section">
-              <h3>允许的文件类型</h3>
-              <div class="file-types">
-                <el-tag 
-                  v-for="type in assignment.fileTypes" 
-                  :key="type" 
-                  type="info"
-                >
-                  {{ type.toUpperCase() }}
-                </el-tag>
-              </div>
+
+
+            <!-- 提交作业表单 - 仅当用户未提交且作业未过期时显示 -->
+            <div v-if="!userSubmission && !isAssignmentExpired(assignment.deadline)" class="submit-form-container">
+              <el-form 
+                ref="submitFormRef" 
+                :model="submitForm" 
+                :rules="submitRules" 
+                label-width="100px"
+              >
+                <!-- 用户信息显示和手动输入选项 -->
+                <el-form-item label="学号" prop="studentId">
+                  <el-input 
+                    v-model="submitForm.studentId" 
+                    placeholder="请输入学号"
+                    :disabled="submitForm.studentId && !manualInputEnabled"
+                  >
+                    <template slot="append">
+                      <el-button 
+                        size="small" 
+                        type="text" 
+                        @click="manualInputEnabled = !manualInputEnabled"
+                      >
+                        {{ manualInputEnabled ? '自动获取' : '手动输入' }}
+                      </el-button>
+                    </template>
+                  </el-input>
+                </el-form-item>
+                <el-form-item label="姓名" prop="studentName">
+                  <el-input 
+                    v-model="submitForm.studentName" 
+                    placeholder="请输入姓名"
+                    :disabled="submitForm.studentName && !manualInputEnabled"
+                  >
+                    <template slot="append">
+                      <el-button 
+                        size="small" 
+                        type="text" 
+                        @click="manualInputEnabled = !manualInputEnabled"
+                      >
+                        {{ manualInputEnabled ? '自动获取' : '手动输入' }}
+                      </el-button>
+                    </template>
+                  </el-input>
+                  <el-tag v-if="!submitForm.studentId" type="warning" size="small" style="margin-top: 5px; display: block;">
+                    提示：如果自动获取失败，请手动输入学号和姓名
+                  </el-tag>
+                </el-form-item>
+
+                <el-form-item label="提交文件" prop="fileId">
+                  <!-- 重要：当作业过期时，禁用文件上传按钮 -->
+                  <!-- 添加:disabled属性并绑定到isAssignmentExpired(assignment.deadline)条件 -->
+                  <!-- accept属性已移除，允许上传任意文件类型 -->
+                  <el-upload
+                    class="upload-demo"
+                    :action="uploadUrl"
+                    :headers="uploadHeaders"
+                    :on-success="handleUploadSuccess"
+                    :on-error="handleUploadError"
+                    :before-upload="beforeUpload"
+                    :data="getUploadData()"
+                    :show-file-list="true"
+                    :file-list="fileList"
+                    :multiple="false"
+                    :on-remove="handleRemove"
+                    :disabled="isAssignmentExpired(assignment.deadline)"
+                  >
+                    <el-button 
+                      size="small" 
+                      type="primary"
+                      :disabled="isAssignmentExpired(assignment.deadline)"
+                    >
+                      {{ isAssignmentExpired(assignment.deadline) ? '作业已过期，无法上传' : '选择文件' }}
+                    </el-button>
+                    <div slot="tip" class="el-upload__tip">
+                      支持的文件大小不超过20MB
+                    </div>
+                  </el-upload>
+                  <el-alert
+                    v-if="uploadSuccess"
+                    title="作业提交成功！"
+                    type="success"
+                    :closable="false"
+                    show-icon
+                  />
+                </el-form-item>
+              </el-form>
+            </div>
+            
+            <!-- 已提交作业状态卡片 - 当用户已提交作业时显示 -->
+            <div v-else-if="userSubmission" class="submitted-status-card">
+              <el-card shadow="hover">
+                <div class="submitted-header">
+                  <div class="submitted-title">
+                    <h3>作业提交状态</h3>
+                    <el-tag 
+                      :type="getSubmissionTagType()"
+                      size="large"
+                      class="status-tag"
+                    >
+                      {{ getSubmissionStatusText() }}
+                    </el-tag>
+                  </div>
+                  
+                  <el-alert 
+                    v-if="userSubmission.status === 'submitted' && !isAssignmentExpired(assignment.deadline)"
+                    title="恭喜您！作业已成功提交。"
+                    type="success"
+                    :closable="false"
+                    show-icon
+                    style="margin-bottom: 15px;"
+                  ></el-alert>
+                  
+                  <el-alert 
+                    v-else-if="userSubmission.status === 'submitted' && isAssignmentExpired(assignment.deadline)"
+                    title="作业已提交，但已超过截止时间。"
+                    type="warning"
+                    :closable="false"
+                    show-icon
+                    style="margin-bottom: 15px;"
+                  ></el-alert>
+                  
+                  <el-alert 
+                    v-else-if="userSubmission.status === 'late'"
+                    title="作业已逾期提交。"
+                    type="warning"
+                    :closable="false"
+                    show-icon
+                    style="margin-bottom: 15px;"
+                  ></el-alert>
+                </div>
+                
+                <div class="submitted-details">
+                  <div class="detail-item">
+                    <span class="detail-label">提交时间：</span>
+                    <span class="detail-value">{{ formatDate(userSubmission.submitTime) }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">提交的文件：</span>
+                    <span class="detail-value">{{ userSubmission.fileName }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">文件大小：</span>
+                    <span class="detail-value">{{ formatFileSize(userSubmission.fileSize) }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">提交的学号：</span>
+                    <span class="detail-value">{{ userSubmission.studentId }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">提交的姓名：</span>
+                    <span class="detail-value">{{ userSubmission.studentName }}</span>
+                  </div>
+                </div>
+                
+                <div class="submitted-actions" style="margin-top: 20px; text-align: right;">
+                  <el-button 
+                    type="primary" 
+                    size="medium"
+                    @click="downloadMyFile"
+                    icon="el-icon-download"
+                  >
+                    下载我的作业
+                  </el-button>
+                </div>
+              </el-card>
+            </div>
+            
+            <!-- 作业已过期提示 - 当作业已过期且用户未提交时显示 -->
+            <div v-else-if="isAssignmentExpired(assignment.deadline) && !userSubmission" class="expired-notice-card">
+              <el-card shadow="hover" type="danger">
+                <div class="expired-content">
+                  <el-alert 
+                    title="作业已过期"
+                    type="error"
+                    description="很遗憾，该作业已超过截止日期，无法再提交。请联系老师获取帮助。"
+                    show-icon
+                    :closable="false"
+                  ></el-alert>
+                </div>
+              </el-card>
             </div>
 
-            <!-- 操作按钮 -->
+            <!-- 操作按钮 - 仅保留管理员操作 -->
             <div class="action-buttons">
-              <el-button 
-                v-if="!isAssignmentExpired(assignment.deadline) && (!userSubmission || userSubmission.status !== 'submitted')"
-                type="primary" 
-                size="large"
-                @click="goToSubmit"
-              >
-                <i class="el-icon-upload2"></i>
-                提交作业
-              </el-button>
-              <el-button 
-                v-else-if="userSubmission && userSubmission.status === 'submitted'"
-                type="success" 
-                size="large"
-                @click="downloadMyFile"
-              >
-                <i class="el-icon-download"></i>
-                下载我的作业
-              </el-button>
               <el-button 
                 v-if="userInfo?.role == 'admin'"
                 type="warning" 
@@ -124,6 +282,7 @@
               </el-button>
             </div>
           </div>
+          
 
           <!-- 提交情况统计 -->
           <div v-if="assignment && userInfo?.role === 'admin'" class="submission-stats">
@@ -227,7 +386,7 @@ import { useRoute, useRouter } from 'vue-router';
 import AssignmentFormDialog from '../components/AssignmentFormDialog.vue';
 import { ElMessage, ElMessageBox, ElLoading, ElIcon } from 'element-plus';
 import { Loading } from '@element-plus/icons-vue';
-import { getCurrentUserInfo, logoutUser } from '../services/userService';
+import { getCurrentUserInfo, logoutUser, getCurrentUser } from '../services/userService';
 import { 
   getAssignmentById, 
   updateAssignment, 
@@ -237,7 +396,8 @@ import {
   getSubmissionsByAssignment, 
   getSubmissionByUserAndAssignment, 
   deleteSubmission, 
-  downloadFile as downloadFileAPI 
+  downloadFile as downloadFileAPI,
+  submitAssignment
 } from '../services/submissionService';
 
 export default {
@@ -253,6 +413,36 @@ export default {
     const allStudents = ref(0);
     const loading = ref(true);
     const updateDialogVisible = ref(false);
+    
+    // 新增：提交作业相关变量
+    const submitFormRef = ref(null);
+    const fileList = ref([]);
+    const uploadUrl = 'http://localhost:3001/api/upload';
+    const uploadHeaders = ref({});
+    const uploadSuccess = ref(false);
+    const originalFile = ref(null);
+    const manualInputEnabled = ref(false);
+    
+    // 表单数据 - 添加默认值以避免空字符串问题
+    const submitForm = ref({
+      studentId: localStorage.getItem('studentId') || '', // 尝试从localStorage直接获取
+      studentName: localStorage.getItem('studentName') || '',
+      assignmentName: '',
+      file: null
+    });
+    
+    // 表单验证规则
+    const submitRules = ref({
+      assignmentName: [
+        { required: true, message: '作业名称不能为空', trigger: 'blur' }
+      ],
+      studentId: [
+        { required: true, message: '请输入学号', trigger: 'blur' }
+      ],
+      studentName: [
+        { required: true, message: '请输入姓名', trigger: 'blur' }
+      ]
+    });
     
     // 格式化日期
     const formatDate = (dateString) => {
@@ -299,6 +489,22 @@ export default {
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
     
+    // 获取提交状态标签类型
+    const getSubmissionTagType = () => {
+      if (userSubmission.value && userSubmission.value.status === 'submitted' && assignment.value && !isAssignmentExpired(assignment.value.deadline)) {
+        return 'success'; // 按时提交
+      }
+      return 'danger'; // 逾期提交或已过期
+    };
+    
+    // 获取提交状态文本
+    const getSubmissionStatusText = () => {
+      if (userSubmission.value && userSubmission.value.status === 'submitted' && assignment.value && !isAssignmentExpired(assignment.value.deadline)) {
+        return '已提交'; // 按时提交
+      }
+      return '已逾期'; // 逾期提交或已过期
+    };
+    
     // 计算提交统计
     const totalStudents = computed(() => allStudents.value);
     const submittedCount = computed(() => submissionList.value.length);
@@ -311,6 +517,145 @@ export default {
     // 使用Vue Router获取路由信息
     const route = useRoute();
     const router = useRouter();
+    
+    // 新增：提交作业相关方法
+    // 获取上传数据 - 包含所有必要的表单信息
+    const getUploadData = () => {
+      const data = {
+        studentId: submitForm.value.studentId || 
+                  userInfo.value?.user?.studentId || 
+                  localStorage.getItem('studentId') || '',
+        studentName: submitForm.value.studentName || 
+                    userInfo.value?.user?.name || 
+                    localStorage.getItem('studentName') || '',
+        assignmentId: getAssignmentIdFromUrl(),
+        assignmentName: submitForm.value.assignmentName,
+        description: submitForm.value.description || ''
+      };
+      return data;
+    };
+    
+    // 上传前验证
+    const beforeUpload = (file) => {
+      // 不再验证文件类型，允许上传任意文件格式
+      
+      // 检查文件大小（20MB）
+      const maxSize = 20 * 1024 * 1024;
+      if (file.size > maxSize) {
+        ElMessage.error('文件大小不能超过20MB');
+        return false;
+      }
+      
+      return true;
+    };
+    
+    // 处理上传成功 - 直接提交作业到数据库，并修改前端显示的文件名为姓名-学号格式
+    const handleUploadSuccess = async (response, file, fileListParam) => {
+      // 更灵活地判断上传成功
+      const isSuccess = response && (response.id || response.success === true || response.code === 200 || response.code === '200');
+      
+      if (isSuccess) {
+        // 标记文件已上传成功
+        uploadSuccess.value = true;
+        
+        // 直接使用组件传递的fileList参数更新本地fileList
+        if (fileListParam && fileListParam.length > 0) {
+          // 复制fileList以避免直接修改prop
+          fileList.value = JSON.parse(JSON.stringify(fileListParam));
+          fileList.value[0].status = 'success';
+          originalFile.value = fileList.value[0].raw;
+          
+          // 修改前端显示的文件名：用姓名-学号覆盖原文件名
+          // 获取文件扩展名
+          const fileExtension = file.name.split('.').pop().toLowerCase();
+          // 构建新的文件名：姓名-学号.扩展名
+          const newFileName = `${submitForm.value.studentName}-${submitForm.value.studentId}.${fileExtension}`;
+          // 更新显示的文件名
+          fileList.value[0].name = newFileName;
+        }
+        
+        // 直接提交作业到数据库，不再需要手动点击提交按钮
+        try {
+          // 表单验证
+          await submitFormRef.value.validate();
+          
+          const assignmentId = getAssignmentIdFromUrl();
+          // 使用修改后的文件名（姓名-学号格式）提交到数据库
+          const formData = {
+            assignmentId,
+            studentId: submitForm.value.studentId,
+            studentName: submitForm.value.studentName,
+            assignmentName: submitForm.value.assignmentName,
+            fileName: fileList.value?.[0]?.name || '', // 这里已经是修改后的姓名-学号格式的文件名
+            filePath: response.path || response.filePath, // 添加文件路径
+            fileSize: originalFile.value?.size || 0, // 添加文件大小
+            fileId: response.id || response.fileId // 使用上传接口返回的文件ID
+          };
+          
+          // 调用submitAssignment服务进行数据库插入操作
+          await submitAssignment(formData);
+          
+          ElMessage.success('作业提交成功！');
+          
+          // 显示成功提示，并重定向到作业详情页（刷新页面）
+          setTimeout(() => {
+            loadData();
+          }, 1500);
+          
+        } catch (error) {
+          // 显示详细错误信息
+          const errorMsg = error.response?.data?.message || error.message || '作业提交失败，请重试';
+          ElMessage.error(errorMsg);
+          
+          // 处理文件相关错误
+          if (errorMsg.includes('文件')) {
+            ElMessage.warning('请重新上传文件后再尝试提交');
+            uploadSuccess.value = false;
+          }
+        }
+      } else {
+        ElMessage.error('文件上传失败');
+        uploadSuccess.value = false;
+      }
+    };
+    
+    // 处理上传错误
+    const handleUploadError = (error) => {
+      // 显示更详细的错误信息
+      let errorMessage = '文件上传失败';
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMessage = '文件上传失败: ' + error.response.data.message;
+      } else if (error.message) {
+        errorMessage = '文件上传失败: ' + error.message;
+      }
+      
+      ElMessage.error(errorMessage);
+      
+      // 如果是学生不存在错误，尝试清除缓存并重新获取用户信息
+      if (error.response?.data?.message === '学生不存在') {
+        ElMessageBox.confirm(
+          '检测到学生信息可能不匹配，是否清除缓存并重新获取用户信息？',
+          '提示',
+          {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }
+        ).then(() => {
+          localStorage.removeItem('studentId');
+          localStorage.removeItem('studentName');
+          // 重新加载页面
+          window.location.reload();
+        }).catch(() => {});
+      }
+    };
+    
+    // 处理文件移除
+    const handleRemove = (file, fileList) => {
+      fileList.value = fileList;
+      // 清除上传状态
+      uploadSuccess.value = false;
+    };
     
     // 获取作业ID
     const getAssignmentIdFromUrl = () => {
@@ -335,8 +680,6 @@ export default {
         // 直接从route params获取ID，这是最可靠的方式
         let assignmentId = route.params.id;
         
-        console.log('Route params id:', assignmentId);
-        
         // 验证assignmentId是否有效
         if (!assignmentId || assignmentId.trim() === '') {
           throw new Error('无效的作业ID');
@@ -344,18 +687,38 @@ export default {
         
         // 确保ID是字符串类型
         assignmentId = String(assignmentId);
-        console.log('Validated assignmentId:', assignmentId);
         
         // 获取作业详情
         const assignmentData = await getAssignmentById(assignmentId);
         assignment.value = assignmentData;
         
+        // 更新表单数据
+        submitForm.value.assignmentName = assignmentData.title;
+        
+        // 从localStorage获取用户信息
+        const userData = getCurrentUser();
+        
+        // 修正：尝试多种方式获取学生信息，确保studentId不为空
+        const userIdFromUserData = userData?.user?.studentId;
+        const userIdFromLocalStorage = localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.studentId : null;
+        
+        submitForm.value.studentId = userIdFromUserData || userIdFromLocalStorage || submitForm.value.studentId;
+        submitForm.value.studentName = userData?.user?.name || (localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.name : '') || submitForm.value.studentName;
+        
+        // 保存到localStorage以便下次使用
+        if (submitForm.value.studentId) {
+          localStorage.setItem('studentId', submitForm.value.studentId);
+        }
+        if (submitForm.value.studentName) {
+          localStorage.setItem('studentName', submitForm.value.studentName);
+        }
+        
         // 加载用户提交记录 - 使用用户的id字段而不是studentId
-        const userSubmissionData = await getSubmissionByUserAndAssignment(userInfo.value.id, assignmentId);
+        const userSubmissionData = await getSubmissionByUserAndAssignment(userData?.user?.id, assignmentId);
         userSubmission.value = userSubmissionData;
         
         // 如果是管理员，获取所有提交记录和学生总数
-        if (userInfo.value.role === 'admin') {
+        if (userData?.user?.role === 'admin') {
           const submissionListData = await getSubmissionsByAssignment(assignmentId);
           submissionList.value = submissionListData || [];
           
@@ -377,10 +740,7 @@ export default {
       router.push('/assignments');
     };
     
-    // 跳转到提交页面
-    const goToSubmit = () => {
-      router.push(`/submit/${getAssignmentIdFromUrl()}`);
-    };
+    // goToSubmit函数已移除，因为提交按钮已删除
     
     // 跳转到个人中心
     const goToProfile = () => {
@@ -489,17 +849,35 @@ export default {
       getCountdown,
       formatFileSize,
       goBack,
-      goToSubmit,
+      // goToSubmit函数已移除
       goToProfile,
       handleLogout,
       showUpdateDialog,
       handleUpdateAssignment,
       downloadFile,
       downloadMyFile,
-      deleteSubmission
+      deleteSubmission,
+      // 新增：提交作业相关返回值
+      submitFormRef,
+      fileList,
+      uploadUrl,
+      uploadHeaders,
+      submitForm,
+      submitRules,
+      manualInputEnabled,
+      uploadSuccess,
+      originalFile,
+      getUploadData,
+      beforeUpload,
+      handleUploadSuccess,
+      handleUploadError,
+      handleRemove,
+      // 新增：状态识别辅助方法
+      getSubmissionTagType,
+      getSubmissionStatusText
     };
   }
-};
+}
 </script>
 
 <style scoped>
@@ -508,6 +886,40 @@ export default {
   padding: 20px;
   width: 100%;
   min-height: calc(100vh - 60px); /* 考虑Header高度 */
+}
+
+/* 新增：提交表单相关样式 */
+.submit-form-container {
+  max-width: 800px;
+  margin: 20px auto 0;
+}
+
+.assignment-title-section {
+  background-color: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.assignment-title-section h1 {
+  color: #303133;
+  margin: 0 0 20px 0;
+  font-size: 24px;
+}
+
+.expired-warning {
+  margin-top: 20px;
+}
+
+.urgent-warning {
+  margin-top: 20px;
+}
+
+.submit-form-card {
+  background-color: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
 
 .back-button-container {
@@ -593,21 +1005,7 @@ export default {
 
 /* 文件命名规则相关样式已移除 */
 
-.file-types-section {
-  margin-bottom: 30px;
-}
-
-.file-types-section h3 {
-  color: #303133;
-  margin-bottom: 15px;
-  font-size: 18px;
-}
-
-.file-types {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+/* 文件类型相关样式已移除 */
 
 .action-buttons {
   display: flex;

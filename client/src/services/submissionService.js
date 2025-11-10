@@ -83,14 +83,34 @@ export const getSubmissionByUserAndAssignment = async (userId, assignmentId, inc
 // 提交作业
 export const submitAssignment = async (formData) => {
   try {
-    const response = await api.post('/submissions', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    return response;
+    console.log('提交作业请求数据:', formData);
+    
+    // 确保formData包含所有必要字段
+    const submissionData = {
+      assignmentId: formData.assignmentId,
+      studentId: formData.studentId,
+      studentName: formData.studentName,
+      assignmentName: formData.assignmentName,
+      fileName: formData.fileName,
+      filePath: formData.filePath,
+      fileSize: formData.fileSize,
+      fileId: formData.fileId
+    };
+    
+    console.log('处理后的提交数据:', submissionData);
+    
+    // 直接发送处理后的submissionData对象
+    const response = await api.post('/submissions', submissionData);
+    
+    console.log('提交作业响应:', response);
+    return response.data;
   } catch (error) {
-    console.error('提交作业失败:', error);
+    console.error('提交作业API错误详情:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers
+    });
     throw error;
   }
 };

@@ -6,7 +6,6 @@ import LoginView from '../views/LoginView.vue';
 import HomeView from '../views/HomeView.vue';
 import AssignmentListView from '../views/AssignmentListView.vue';
 import AssignmentDetailView from '../views/AssignmentDetailView.vue';
-import SubmitAssignmentView from '../views/SubmitAssignmentView.vue';
 import AdminPanelView from '../views/AdminPanelView.vue';
 
 // 导入用户服务
@@ -41,12 +40,6 @@ const routes = [
     name: 'assignment-detail',
     component: AssignmentDetailView,
     meta: { requiresAuth: true }
-  },
-  {
-    path: '/submit/:id',
-    name: 'submit-assignment',
-    component: SubmitAssignmentView,
-    meta: { requiresAuth: false }
   },
   {
     path: '/profile',

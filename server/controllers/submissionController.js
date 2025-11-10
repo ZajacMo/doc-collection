@@ -100,58 +100,48 @@ exports.getSubmissionsByUser = async (req, res) => {
 // 创建新提交
 exports.createSubmission = async (req, res) => {
   try {
-    // 检查文件是否上传
-    if (!req.file) {
-      console.log('没有收到文件上传');
-      return res.status(400).json({ message: '请上传文件' });
-    }
-    
-    // 打印所有可能包含数据的地方
-    // console.log('请求体原始数据:', req.body);
-    // console.log('请求表单数据:', req.fields);
-    // console.log('请求文件信息:', req.file);
+    console.log('提交请求体:', req.body);
     
     // 尝试从不同位置获取参数
     const assignmentId = req.body?.assignmentId || req.fields?.assignmentId;
     const studentId = req.body?.studentId || req.fields?.studentId;
     const studentName = req.body?.studentName || req.fields?.studentName;
-    const description = req.body?.description || req.fields?.description || '';
-    const autoRename = req.body?.autoRename === 'true' || req.fields?.autoRename === 'true';
+    const fileId = req.body?.fileId || req.fields?.fileId; // 支持上传的文件ID
+    const fileName = req.body?.fileName || req.fields?.fileName;
+    const filePath = req.body?.filePath || req.fields?.filePath;
+    const fileSize = req.body?.fileSize || req.fields?.fileSize;
     
-    console.log('解析后的数据:', { assignmentId, studentId, studentName, description, autoRename });
-    
-    // 检查学生和作业是否存在
+    console.log('解析后的数据:', { 
+      assignmentId, 
+      studentId, 
+      studentName,
+      fileId,
+      fileName,
+      filePath,
+      fileSize
+    });
+      
+    // 检查学生是否存在
     console.log('验证学生信息:', { studentId, type: typeof studentId });
-    
-    // 尝试不同类型的studentId查询（字符串和数字转换）
     let studentExists;
     try {
-      // 首先尝试直接查询
-      studentExists = await getOne('SELECT id, name, studentId FROM users WHERE studentId = ? AND role = ?', [studentId, 'student']);
-      console.log('直接查询结果:', studentExists);
+      // 尝试不同类型的studentId查询（字符串和数字）
+      studentExists = await getOne('SELECT id, name, studentId FROM users WHERE studentId = ?', [studentId]);
       
       // 如果直接查询失败，尝试转换为数字再查询
       if (!studentExists && !isNaN(studentId)) {
         const numericStudentId = Number(studentId);
-        studentExists = await getOne('SELECT id, name, studentId FROM users WHERE studentId = ? AND role = ?', [numericStudentId, 'student']);
+        studentExists = await getOne('SELECT id, name, studentId FROM users WHERE studentId = ?', [numericStudentId]);
         console.log('数字转换后查询结果:', studentExists);
       }
-      
-      // 查询所有学生信息用于调试
-      const allStudents = await getAll('SELECT id, name, studentId FROM users WHERE role = ?', ['student']);
-      console.log('所有学生信息:', allStudents);
     } catch (error) {
-      console.error('数据库查询错误:', error);
+      console.error('学生查询数据库错误:', error);
     }
     
-    if (!studentExists) {
-      fs.unlinkSync(req.file.path);
-      return res.status(404).json({ message: '学生不存在' });
-    }
-    
-    const assignment = await getOne('SELECT id, title, namingRule FROM assignments WHERE id = ?', [assignmentId]);
+   
+    // 检查作业是否存在
+    const assignment = await getOne('SELECT id, title, namingRule, deadline FROM assignments WHERE id = ?', [assignmentId]);
     if (!assignment) {
-      fs.unlinkSync(req.file.path);
       return res.status(404).json({ message: '作业不存在' });
     }
     
@@ -159,57 +149,34 @@ exports.createSubmission = async (req, res) => {
     const deadline = new Date(assignment.deadline);
     const now = new Date();
     if (now > deadline) {
-      fs.unlinkSync(req.file.path);
       return res.status(400).json({ message: '作业提交已截止' });
     }
     
-    // 如果不使用自动重命名，则验证文件名格式
-    if (!autoRename) {
-      // 获取文件命名规则
-      const namingRule = assignment.namingRule || process.env.FILE_NAMING_RULE || '{学号}_{姓名}_{作业名称}_{提交日期}';
-      
-      // 获取文件名（不包含扩展名）
-      const baseName = path.basename(req.file.originalname, path.extname(req.file.originalname));
-      const studentNameFromDB = studentExists.name;
-      
-      // 简单的验证逻辑
-      if (!baseName.includes(studentId) || !baseName.includes(studentNameFromDB)) {
-        fs.unlinkSync(req.file.path);
-        return res.status(400).json({ 
-          valid: false, 
-          message: `文件名不符合要求，请包含学号(${studentId})和姓名(${studentNameFromDB})` 
-        });
-      }
+    // 检查必要的文件信息
+    if (!fileName || !filePath) {
+      return res.status(400).json({ message: '缺少文件信息' });
     }
     
     // 检查用户是否已提交
     const existingSubmission = await getOne(
-      'SELECT id, filePath FROM submissions WHERE studentId = ? AND assignmentId = ?',
+      'SELECT id FROM submissions WHERE studentId = ? AND assignmentId = ?',
       [studentId, assignmentId]
     );
     
     const submitTime = new Date().toISOString();
-    const filePath = req.file.path.replace(__dirname, '').replace(/^\\/, '');
     
     if (existingSubmission) {
-      // 删除旧的提交文件
-      try {
-        if (existingSubmission.filePath && fs.existsSync(path.join(__dirname, existingSubmission.filePath))) {
-          fs.unlinkSync(path.join(__dirname, existingSubmission.filePath));
-        }
-      } catch (err) {
-        console.error('删除旧文件失败:', err);
-      }
+      console.log('更新现有提交记录:', existingSubmission.id);
       
       // 更新提交
       await run(
-        'UPDATE submissions SET fileName = ?, filePath = ?, fileSize = ?, description = ?, submitTime = ? WHERE id = ?',
+        'UPDATE submissions SET fileName = ?, filePath = ?, fileSize = ?, submitTime = ?, status = ? WHERE id = ?',
         [
-          req.file.originalname,
+          fileName,
           filePath,
-          req.file.size,
-          description,
+          fileSize || 0,
           submitTime,
+          'submitted',
           existingSubmission.id
         ]
       );
@@ -217,22 +184,21 @@ exports.createSubmission = async (req, res) => {
       const updatedSubmission = await getOne('SELECT * FROM submissions WHERE id = ?', [existingSubmission.id]);
       res.json(updatedSubmission);
     } else {
+      console.log('创建新提交记录');
       // 获取最大ID
       const maxIdRow = await getOne('SELECT MAX(CAST(id AS INTEGER)) as maxId FROM submissions');
       const newId = (maxIdRow?.maxId || 0) + 1;
       
       // 创建新提交
       await run(
-        'INSERT INTO submissions (id, assignmentId, studentId, studentName, fileName, filePath, fileSize, description, submitTime, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO submissions (id, assignmentId, studentId, fileName, filePath, fileSize, submitTime, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [
           newId.toString(),
           assignmentId,
           studentId,
-          studentName || studentExists.name,
-          req.file.originalname,
+          fileName,
           filePath,
-          req.file.size,
-          description,
+          fileSize || 0,
           submitTime,
           'submitted'
         ]
@@ -242,14 +208,6 @@ exports.createSubmission = async (req, res) => {
       res.status(201).json(newSubmission);
     }
   } catch (error) {
-    // 错误处理：删除上传的文件
-    if (req.file) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (err) {
-        console.error('清理失败文件时出错:', err);
-      }
-    }
     console.error('创建提交失败:', error);
     res.status(500).json({ message: '创建提交记录失败', error: error.message });
   }
@@ -274,26 +232,6 @@ exports.updateSubmission = (req, res) => {
 // 删除提交
 exports.deleteSubmission = async (req, res) => {
   try {
-    // 获取提交记录
-    const submission = await getOne('SELECT * FROM submissions WHERE id = ?', [req.params.id]);
-    
-    if (!submission) {
-      return res.status(404).json({ message: '提交不存在' });
-    }
-    
-    // 删除文件
-    if (submission.filePath) {
-      try {
-        const fullPath = path.join(__dirname, submission.filePath);
-        if (fs.existsSync(fullPath)) {
-          fs.unlinkSync(fullPath);
-        }
-      } catch (err) {
-        console.error('删除文件失败:', err);
-        // 继续执行数据库删除，即使文件删除失败
-      }
-    }
-    
     // 从数据库中删除记录
     const result = await run('DELETE FROM submissions WHERE id = ?', [req.params.id]);
     
@@ -307,17 +245,4 @@ exports.deleteSubmission = async (req, res) => {
   }
 };
 
-// 下载提交的文件
-exports.downloadSubmission = (req, res) => {
-  const submission = submissions.find(s => s.id === req.params.id);
-  if (submission && submission.filePath) {
-    const filePath = path.join(__dirname, '../', submission.filePath);
-    if (fs.existsSync(filePath)) {
-      res.download(filePath, submission.fileName);
-    } else {
-      res.status(404).json({ message: '文件不存在' });
-    }
-  } else {
-    res.status(404).json({ message: '提交不存在或文件已丢失' });
-  }
-};
+// 下载提交的文件功能已移除，文件下载由uploadController处理

@@ -22,7 +22,6 @@ router.put('/:id', submissionController.updateSubmission);
 // 删除提交
 router.delete('/:id', submissionController.deleteSubmission);
 
-// 下载提交的文件
-router.get('/:id/download', submissionController.downloadSubmission);
+// 下载提交的文件路由已移除，文件下载由uploadController处理
 
 module.exports = router;

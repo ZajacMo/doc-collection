@@ -20,14 +20,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 静态文件服务 - 用于提供文件下载
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+    app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// 确保uploads目录存在
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-  console.log('创建uploads目录成功');
-}
+    // 确保必要目录存在
+    const directories = ['uploads'];
+    directories.forEach(dir => {
+      const dirPath = path.join(__dirname, dir);
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+        console.log(`创建${dir}目录成功`);
+      }
+    });
 
 // 初始化数据库连接
 async function startServer() {
@@ -40,10 +43,12 @@ async function startServer() {
     const userRoutes = require('./routes/users');
     const assignmentRoutes = require('./routes/assignments');
     const submissionRoutes = require('./routes/submissions');
+    const uploadRoutes = require('./controllers/uploadController'); // 直接使用上传控制器作为路由
     
     app.use('/api/users', userRoutes);
     app.use('/api/assignments', assignmentRoutes);
     app.use('/api/submissions', submissionRoutes);
+    app.use('/api/upload', uploadRoutes); // 添加文件上传路由
     
     // 健康检查接口
     app.get('/api/health', (req, res) => {

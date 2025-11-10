@@ -91,7 +91,7 @@ tmp/
 temp/
 
 # File uploads
-uploads/
+**/*uploads/
 **/data/
 server/db/*.db
 server/uploads/

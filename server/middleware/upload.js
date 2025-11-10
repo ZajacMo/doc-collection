@@ -1,4 +1,4 @@
-// 文件上传中间件
+// 文件上传中间件 - 确保文件始终上传到作业名称子目录下
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -6,19 +6,34 @@ const fs = require('fs');
 // 配置存储
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // 根据作业名称创建存储目录
-    const { assignmentName } = req.body;
-    let uploadPath = process.env.UPLOAD_DIR || './server/uploads';
-    
-    if (assignmentName) {
+    try {
+      // 从请求体中获取作业名称
+      const { assignmentName } = req.body;
+      
+      // 获取基础上传目录，支持环境变量配置或使用默认值
+      let baseUploadPath = process.env.UPLOAD_DIR || './server/uploads';
+      
+      // 验证作业名称参数的有效性 - 必须提供作业名称
+      if (!assignmentName || typeof assignmentName !== 'string' || assignmentName.trim() === '') {
+        return cb(new Error('缺少必需的作业名称参数'), null);
+      }
+      
       // 清理作业名称中的非法字符，确保可以作为文件夹名
       const safeAssignmentName = assignmentName.replace(/[\\/:*?"<>|]/g, '_');
-      uploadPath = path.join(uploadPath, safeAssignmentName);
+      
+      // 构建完整的上传路径：基础路径/作业名称
+      // 确保文件始终上传到作业名称子目录中，而不是直接在uploads根目录下
+      const fullUploadPath = path.join(baseUploadPath, safeAssignmentName);
+      
+      // 确保目标目录存在，使用recursive选项自动创建多级目录
+      fs.mkdirSync(fullUploadPath, { recursive: true });
+      
+      // 返回构建好的目录路径
+      cb(null, fullUploadPath);
+    } catch (error) {
+      // 捕获并处理任何可能的错误
+      cb(new Error(`创建上传目录失败: ${error.message}`), null);
     }
-    
-    // 确保目录存在
-    fs.mkdirSync(uploadPath, { recursive: true });
-    cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
     const { studentId, studentName, autoRename } = req.body;
