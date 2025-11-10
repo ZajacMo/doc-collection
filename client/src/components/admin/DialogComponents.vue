@@ -109,7 +109,7 @@ import { ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { createUser, updateUser } from '../../services/userService';
 import { createAssignment } from '../../services/assignmentService';
-import AssignmentFormDialog from '../../components/AssignmentFormDialog.vue';
+import AssignmentFormDialog from '../AssignmentFormDialog.vue';
 
 /**
  * 对话框组件

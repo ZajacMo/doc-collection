@@ -74,11 +74,11 @@ import { getAllAssignments, deleteAssignment as deleteAssignmentAPI } from '../s
 import { getAllSubmissions, deleteSubmission as deleteSubmissionAPI, downloadFile, handleFileDownload } from '../services/submissionService';
 
 // 导入子组件
-import OverviewSection from './admin/OverviewSection.vue';
-import UserManagement from './admin/UserManagement.vue';
-import AssignmentManagement from './admin/AssignmentManagement.vue';
-import SubmissionManagement from './admin/SubmissionManagement.vue';
-import DialogComponents from './admin/DialogComponents.vue';
+import OverviewSection from '../components/admin/OverviewSection.vue';
+import UserManagement from '../components/admin/UserManagement.vue';
+import AssignmentManagement from '../components/admin/AssignmentManagement.vue';
+import SubmissionManagement from '../components/admin/SubmissionManagement.vue';
+import DialogComponents from '../components/admin/DialogComponents.vue';
 
 /**
  * 管理中心主视图组件
