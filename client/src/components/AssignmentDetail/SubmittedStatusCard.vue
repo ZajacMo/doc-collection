@@ -5,64 +5,19 @@
         <div class="submitted-title">
           <h3>作业提交状态</h3>
           <el-tag 
-            :type="getSubmissionTagType()"
+            :type="statusType"
             size="large"
             class="status-tag"
           >
-            {{ getSubmissionStatusText() }}
+            {{ statusText }}
           </el-tag>
         </div>
         
+        <!-- 使用计算属性动态渲染状态提示 -->
         <el-alert 
-          v-if="submissionStatus === '已提交'"
-          title="恭喜您！作业已成功提交，还可以修改。"
-          type="success"
-          :closable="false"
-          show-icon
-          style="margin-bottom: 15px;"
-        ></el-alert>
-        
-        <el-alert 
-          v-else-if="submissionStatus === '已完结'"
-          title="作业已提交且已过截止日期，无法修改。"
-          type="info"
-          :closable="false"
-          show-icon
-          style="margin-bottom: 15px;"
-        ></el-alert>
-        
-        <el-alert 
-          v-else-if="submissionStatus === '已逾期'"
-          title="作业已逾期提交。"
-          type="warning"
-          :closable="false"
-          show-icon
-          style="margin-bottom: 15px;"
-        ></el-alert>
-        
-        <el-alert 
-          v-else-if="submissionStatus === '进行中'"
-          title="请在截止日期前完成作业提交。"
-          type="info"
-          :closable="false"
-          show-icon
-          style="margin-bottom: 15px;"
-        ></el-alert>
-        
-        <!-- 后备方案 -->
-        <el-alert 
-          v-else-if="userSubmission && userSubmission.status === 'submitted' && !isAssignmentExpired"
-          title="恭喜您！作业已成功提交。"
-          type="success"
-          :closable="false"
-          show-icon
-          style="margin-bottom: 15px;"
-        ></el-alert>
-        
-        <el-alert 
-          v-else-if="userSubmission && userSubmission.status === 'late'"
-          title="作业已逾期提交。"
-          type="warning"
+          v-if="alertConfig"
+          :title="alertConfig.title"
+          :type="alertConfig.type"
           :closable="false"
           show-icon
           style="margin-bottom: 15px;"
@@ -110,20 +65,65 @@
 export default {
   name: 'SubmittedStatusCard',
   props: {
-    userSubmission: {
-      type: Object,
-      required: true
-    },
-    submissionStatus: {
+    status: {
       type: String,
-      default: null
+      required: true,
+      validator: (value) => {
+        // 验证状态值是否有效
+        return ['submitted', 'late', 'expired', 'urgent', 'in_progress'].includes(value);
+      }
     },
-    isAssignmentExpired: {
-      type: Boolean,
-      required: true
-    }
   },
-  emits: ['download'],
+  computed: {
+      // 根据状态获取提示配置
+      alertConfig() {
+        const alertMap = {
+          'submitted': {
+            title: '恭喜您！作业已成功提交，还可以修改。',
+            type: 'success'
+          },
+          'expired': {
+            title: '作业已提交且已过截止日期，无法修改。',
+            type: 'info'
+          },
+          'late': {
+            title: '作业已逾期提交。',
+            type: 'warning'
+          },
+          'in_progress': {
+            title: '请在截止日期前完成作业提交。',
+            type: 'info'
+          },
+          'urgent': {
+            title: '作业即将截止，请尽快提交！',
+            type: 'warning'
+          }
+        };
+        return alertMap[this.status] || null;
+      },
+      // 根据状态计算显示文本
+      statusText() {
+        const textMap = {
+          'submitted': '已提交',
+          'late': '已逾期',
+          'expired': '已完结',
+          'urgent': '紧急',
+          'in_progress': '进行中'
+        };
+        return textMap[this.status] || '进行中';
+      },
+      // 根据状态计算标签类型
+      statusType() {
+        const typeMap = {
+          'submitted': 'success',
+          'late': 'danger',
+          'expired': 'success',
+          'urgent': 'warning',
+          'in_progress': 'info'
+        };
+        return typeMap[this.status] || 'info';
+      }
+    },
   methods: {
     // 格式化日期
     formatDate(dateString) {
@@ -141,37 +141,7 @@ export default {
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     },
     
-    // 获取提交状态标签类型
-    getSubmissionTagType() {
-      if (this.submissionStatus) {
-        switch (this.submissionStatus) {
-          case '已提交':
-          case '已完结':
-            return 'success';
-          case '已逾期':
-            return 'danger';
-          case '进行中':
-            return 'info';
-          default:
-            return 'success';
-        }
-      }
-      if (this.userSubmission && this.userSubmission.status === 'submitted') {
-        return 'success';
-      }
-      return 'danger';
-    },
-    
-    // 获取提交状态文本
-    getSubmissionStatusText() {
-      if (this.submissionStatus) {
-        return this.submissionStatus;
-      }
-      if (this.userSubmission && this.userSubmission.status === 'submitted') {
-        return '已提交';
-      }
-      return '已逾期';
-    },
+
     
     // 下载我的文件
     downloadMyFile() {

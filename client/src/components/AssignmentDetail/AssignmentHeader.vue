@@ -33,7 +33,7 @@ export default {
       const typeMap = {
         'submitted': 'success',
         'late': 'danger',
-        'expired': 'danger',
+        'expired': 'success',
         'urgent': 'warning',
         'in_progress': 'info'
       };
@@ -44,7 +44,7 @@ export default {
       const textMap = {
         'submitted': '已提交',
         'late': '已逾期',
-        'expired': '已逾期',
+        'expired': '已完结',
         'urgent': '紧急',
         'in_progress': '进行中'
       };

@@ -38,17 +38,17 @@
       />
       
       <!-- 已提交作业状态卡片 - 当用户已提交作业时显示 -->
-      <SubmittedStatusCard 
-        v-else-if="userSubmission" 
-        :user-submission="userSubmission"
-        :submission-status="submissionStatus"
-        :is-assignment-expired="isAssignmentExpired(assignment.deadline)"
-        @download="downloadMyFile"
-      />
+          <SubmittedStatusCard 
+            v-else-if="userSubmission" 
+            :user-submission="userSubmission"
+            :status="assignmentStatus"
+            :is-assignment-expired="isAssignmentExpired(assignment.deadline)"
+            @download="downloadMyFile"
+          />
       
-      <!-- 作业已过期提示 - 当作业已过期且用户未提交时显示 -->
-      <ExpiredNoticeCard 
-        v-else-if="isAssignmentExpired(assignment.deadline) && !userSubmission" 
+      <!-- 作业状态通知提示 - 根据assignmentStatus动态显示 -->
+      <NoticeCard 
+        :assignment-status="assignmentStatus"
       />
 
       <!-- 操作按钮 - 仅保留管理员操作 -->
@@ -102,7 +102,7 @@ import AssignmentInfo from '../components/AssignmentDetail/AssignmentInfo.vue';
 import AssignmentDescription from '../components/AssignmentDetail/AssignmentDescription.vue';
 import SubmissionForm from '../components/AssignmentDetail/SubmissionForm.vue';
 import SubmittedStatusCard from '../components/AssignmentDetail/SubmittedStatusCard.vue';
-import ExpiredNoticeCard from '../components/AssignmentDetail/ExpiredNoticeCard.vue';
+import NoticeCard from '../components/AssignmentDetail/NoticeCard.vue';
 import SubmissionStats from '../components/AssignmentDetail/SubmissionStats.vue';
 import SubmissionList from '../components/SubmissionList.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -130,7 +130,7 @@ export default {
     AssignmentDescription,
     SubmissionForm,
     SubmittedStatusCard,
-    ExpiredNoticeCard,
+    NoticeCard,
     SubmissionStats,
     SubmissionList
   },
@@ -142,7 +142,7 @@ export default {
     const allStudents = ref(0);
     const loading = ref(true);
     const updateDialogVisible = ref(false);
-    const submissionStatus = ref(null); // 新增：存储学生提交状态
+    // 使用计算属性assignmentStatus代替单独的submissionStatus变量
     
     // 检查作业是否已过期
     const isAssignmentExpired = (deadline) => {
@@ -162,12 +162,7 @@ export default {
     const assignmentStatus = computed(() => {
       if (!assignment.value) return 'in_progress';
       
-      // 优先使用新的API返回的submissionStatus
-      if (submissionStatus.value && submissionStatus.value.status) {
-        return submissionStatus.value.status;
-      }
-      
-      // 其次使用userSubmission的状态
+      // 使用userSubmission的状态（已包含从API获取的状态）
       if (userSubmission.value) {
         if (userSubmission.value.status === 'submitted') {
           return 'submitted';
@@ -176,7 +171,7 @@ export default {
         }
       }
       
-      // 然后检查截止日期相关状态
+      // 检查截止日期相关状态
       if (isAssignmentExpired(assignment.value.deadline)) {
         return 'expired';
       } else if (isAssignmentUrgent(assignment.value.deadline)) {
@@ -252,13 +247,19 @@ export default {
           userSubmission.value = userSubmissionData;
           console.log('Loaded user submission:', userSubmission.value);
           
-          // 调用新的API获取学生提交状态
+          // 调用新的API获取学生提交状态 - 结果会被assignmentStatus计算属性使用
           try {
             // 使用前面定义的studentId或userId
             const statusStudentId = studentId || userId;
             const statusData = await getStudentSubmissionStatus(statusStudentId, assignmentId);
-            submissionStatus.value = statusData;
-            console.log('Loaded submission status:', submissionStatus.value);
+            // 保存原始提交记录状态，供assignmentStatus计算属性使用
+            if (statusData) {
+              // 如果获取到了状态数据，更新userSubmission的状态
+              if (userSubmission.value) {
+                userSubmission.value.status = statusData?.status || statusData;
+              }
+              console.log('Loaded submission status:', statusData?.status || statusData);
+            }
           } catch (error) {
             console.error('获取学生提交状态失败:', error);
             // 如果API调用失败，可以保持现有的逻辑作为后备
@@ -401,7 +402,7 @@ export default {
       userInfo,
       assignment,
       userSubmission,
-      submissionStatus,
+
       submissionList,
       allStudents,
       loading,
@@ -427,6 +428,7 @@ export default {
   padding: 20px;
   width: 100%;
   min-height: calc(100vh - 60px); /* 考虑Header高度 */
+  overflow: auto;
 }
 
 /* 新增：提交表单相关样式 */
