@@ -58,8 +58,15 @@
           size="large"
           @click="showUpdateDialog"
         >
-          <i class="el-icon-edit"></i>
           编辑作业
+        </el-button>
+        <el-button 
+          v-if="userInfo?.role == 'admin'"
+          type="primary" 
+          size="large"
+          @click="exportUnsubmittedList"
+        >
+          导出名单
         </el-button>
       </div>
     </div>
@@ -73,10 +80,10 @@
 
     <!-- 提交列表 -->
     <SubmissionList 
-      v-if="assignment && ((userInfo?.role === 'admin' && submissionList.length > 0) || 
+      v-if="['submitted', 'expired'].includes(assignmentStatus) && ((userInfo?.role === 'admin' && submissionList.length > 0) || 
                          (submissionInfo && userInfo?.role !== 'admin'))"
       :submission-list="submissionList"
-      :user-submission="submissionInfo"
+      :user-submission="submissionInfo.submissionInfo"
       :is-admin="userInfo?.role === 'admin'"
       @download="downloadFile"
       @delete="deleteSubmission"
@@ -110,7 +117,8 @@ import { getCurrentUserInfo, logoutUser, getAllUsers } from '../services/userSer
 import { 
   getAssignmentById, 
   updateAssignment, 
-  isAssignmentExpired as checkAssignmentExpired
+  isAssignmentExpired as checkAssignmentExpired,
+  getMissingSubmissions
 } from '../services/assignmentService';
 import { 
   getSubmissionsByAssignment, 
@@ -288,6 +296,8 @@ export default {
       }
     };
     
+
+    
     // 下载文件
     const downloadFile = async (fileId, fileName) => {
       try {
@@ -334,6 +344,60 @@ export default {
       }
     };
     
+    // 导出未提交作业的学生名单
+    const exportUnsubmittedList = async () => {
+      try {
+        const assignmentId = route.params.id;
+        // 显示加载提示
+        ElMessage('正在准备导出名单...');
+        
+        // 获取未提交作业的学生名单
+        const missingSubmissionsData = await getMissingSubmissions(assignmentId);
+        console.log('未提交作业数据:', missingSubmissionsData);
+        
+        // if (!missingSubmissionsData || !missingSubmissionsData.data) {
+        //   ElMessage.error('获取未提交名单失败');
+        //   return;
+        // }
+        
+        const { missingStudents, assignmentTitle } = missingSubmissionsData;
+        
+        if (!Array.isArray(missingStudents) || missingStudents.length === 0) {
+          ElMessage.success('所有学生都已提交作业，无需导出');
+          return;
+        }
+        
+        // 构建CSV内容
+        let csvContent = '学号,姓名\n';
+        missingStudents.forEach(student => {
+          csvContent += `${student.studentId},${student.studentName}\n`;
+        });
+        
+        // 创建Blob对象
+        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        
+        // 创建下载链接
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `未提交学生名单_${assignmentTitle}.csv`);
+        link.style.visibility = 'hidden';
+        
+        // 添加到DOM并触发点击
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // 释放URL对象
+        URL.revokeObjectURL(url);
+        
+        ElMessage.success('导出成功');
+      } catch (error) {
+        console.error('导出未提交名单失败:', error);
+        ElMessage.error('导出失败，请稍后再试');
+      }
+    };
+    
     // 组件挂载时加载数据
     onMounted(() => {
       loadData();
@@ -358,6 +422,7 @@ export default {
       downloadFile,
       downloadMyFile,
       deleteSubmission,
+      exportUnsubmittedList,
       loadData
     };
   }

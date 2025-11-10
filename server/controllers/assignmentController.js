@@ -359,17 +359,18 @@ exports.getMissingSubmissions = async (req, res) => {
     ).then(rows => rows.map(row => row.studentId));
     
     // 构建查询：获取未提交的学生
-    let queryStr = 'SELECT id, name FROM users WHERE role = ?';
+    let queryStr = 'SELECT studentId as id, name FROM users WHERE role = ?';
     const params = ['student'];
     
     if (submittedStudentIds.length > 0) {
-      queryStr += ' AND id NOT IN (' + submittedStudentIds.map(() => '?').join(', ') + ')';
+      queryStr += ' AND studentId NOT IN (' + submittedStudentIds.map(() => '?').join(', ') + ')';
       params.push(...submittedStudentIds);
     }
     
     queryStr += ' ORDER BY name';
     
     const missingStudents = await query(queryStr, params);
+    // console.log('未提交学生:', missingStudents);
     
     res.json({
       assignmentId,

@@ -22,7 +22,7 @@
           {{ formatFileSize(scope.row.fileSize) }}
         </template>
       </el-table-column>
-      <el-table-column prop="status" label="状态" min-width="80">
+      <el-table-column prop="status" label="状态" min-width="80" v-if="isAdmin">
         <template #default="scope">
           <el-tag v-if="scope.row.status === 'submitted'" type="success">已提交</el-tag>
           <el-tag v-else-if="scope.row.status === 'late'" type="danger">已逾期</el-tag>

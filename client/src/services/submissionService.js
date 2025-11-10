@@ -221,3 +221,13 @@ export const validateFileName = (fileName, namingRule, userInfo, assignmentTitle
     return { isValid: false, message: '文件名验证失败' };
   }
 };
+
+export const exportUnsubmittedListAPI = async (assignmentId) => {
+  try {
+    const response = await api.get(`/submissions/export-unsubmitted/${assignmentId}`);
+    return response;
+  } catch (error) {
+    console.error('导出未交名单失败:', error);
+    throw error;
+  }
+};

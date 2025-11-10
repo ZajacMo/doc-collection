@@ -180,8 +180,10 @@ export default {
         
         if (fileListParam && fileListParam.length > 0) {
           fileList.value = JSON.parse(JSON.stringify(fileListParam));
+          // console.log('上传成功后的fileList:', fileList.value);
           fileList.value[0].status = 'success';
           originalFile.value = fileList.value[0].raw;
+
           
           // 修改前端显示的文件名：用姓名-学号覆盖原文件名
           const fileExtension = file.name.split('.').pop().toLowerCase();
@@ -199,7 +201,7 @@ export default {
             assignmentName: submitForm.assignmentName,
             fileName: fileList.value?.[0]?.name || '',
             filePath: response.path || response.filePath,
-            fileSize: originalFile.value?.size || 0,
+            fileSize: fileList.value?.[0]?.size || 0,
             fileId: response.id || response.fileId
           };
           

@@ -46,9 +46,9 @@ export default {
           description: '恭喜您，作业已完结。'
         },
         'late': {
-          title: '作业已逾期提交',
+          title: '作业已逾期',
           type: 'warning',
-          description: '您的作业已逾期提交，可能会影响成绩评定。请关注后续成绩通知。'
+          description: '很遗憾，您的作业逾期未提交。'
         }
       };
       

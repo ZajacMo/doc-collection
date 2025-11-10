@@ -75,7 +75,7 @@ router.post('/', regularUpload.single('file'), (req, res) => {
     id: Date.now().toString(),
     fileName: renamedFileName,
     filePath: req.file.path.replace(__dirname, '').replace(/^\\/, ''),
-    size: req.file.size
+    fileSize: req.file.size
   });
 });
 
