@@ -1,181 +1,183 @@
-# 作业收集系统
+# Assignment Collection System
 
-一个用于教师收集、管理学生作业的Web应用系统。
+[中文](README_CN.md)
 
-## 项目结构
+A web application system for teachers to collect and manage student assignments.
+
+## Project Structure
 
 ```
 doc-collection/
-├── client/              # 前端Vue3项目
-│   ├── src/             # 前端源码
-│   ├── public/          # 静态资源
-│   ├── package.json     # 前端依赖配置
-│   └── vite.config.js   # Vite配置文件
-├── server/              # 后端Express项目
-│   ├── controllers/     # 控制器
-│   ├── routes/          # 路由
-│   ├── middleware/      # 中间件
-│   ├── data/            # 模拟数据
-│   ├── index.js         # 服务器入口
-│   └── .env             # 环境变量配置
-├── uploads/             # 文件上传目录
-└── README.md            # 项目说明文档
+├── client/              # Frontend Vue3 project
+│   ├── src/             # Frontend source code
+│   ├── public/          # Static resources
+│   ├── package.json     # Frontend dependency configuration
+│   └── vite.config.js   # Vite configuration file
+├── server/              # Backend Express project
+│   ├── controllers/     # Controllers
+│   ├── routes/          # Routes
+│   ├── middleware/      # Middleware
+│   ├── data/            # Mock data
+│   ├── index.js         # Server entry point
+│   └── .env             # Environment variables configuration
+├── uploads/             # File upload directory
+└── README.md            # Project documentation
 ```
 
-## 功能特点
+## Features
 
-### 教师端功能
-- **用户管理**：查看、添加、编辑和删除学生用户
-- **作业管理**：创建、编辑、删除作业，设置截止日期和命名规则
-- **提交管理**：查看所有作业提交，下载学生作业，删除提交
-- **统计分析**：查看作业提交情况，筛选未提交的学生
-- **文件管理**：支持多种文件格式上传，自动按规则分类存储
+### Teacher Features
+- **User Management**: View, add, edit, and delete student users
+- **Assignment Management**: Create, edit, delete assignments, set deadlines and naming rules
+- **Submission Management**: View all assignment submissions, download student assignments, delete submissions
+- **Statistical Analysis**: View assignment submission status, filter out students who haven't submitted
+- **File Management**: Support multiple file formats upload, automatically classify and store according to rules
 
-### 学生端功能
-- **查看作业**：浏览所有作业，查看详细要求
-- **提交作业**：上传作业文件，确保符合命名规则
-- **提交历史**：查看已提交的作业记录，重新提交
-- **个人信息**：查看个人信息和作业完成情况
+### Student Features
+- **View Assignments**: Browse all assignments, view detailed requirements
+- **Submit Assignments**: Upload assignment files, ensure compliance with naming rules
+- **Submission History**: View submitted assignment records, resubmit
+- **Personal Information**: View personal information and assignment completion status
 
-## 技术栈
+## Technology Stack
 
-### 前端
+### Frontend
 - Vue 3
 - Vue Router 4
 - Element Plus
 - Axios
 - Vite
 
-### 后端
+### Backend
 - Node.js
 - Express
-- Multer (文件上传)
-- xlsx (Excel解析)
-- node-schedule (定时任务)
+- Multer (file upload)
+- xlsx (Excel parsing)
+- node-schedule (scheduled tasks)
 
-## 快速开始
+## Quick Start
 
-### 前置要求
-- Node.js 14+ 和 npm 6+
+### Prerequisites
+- Node.js 14+ and npm 6+
 
-### 方法1：同时启动前后端（推荐）
+### Method 1: Start Both Frontend and Backend Simultaneously (Recommended)
 
-在项目根目录执行以下命令，可同时启动前端开发服务器和后端API服务器：
+Execute the following commands in the project root directory to start both frontend development server and backend API server simultaneously:
 
 ```bash
-# 确保安装了所有依赖（首次运行）
+# Ensure all dependencies are installed (first run)
 npm install
 cd client
 npm install
 cd ..
 
-# 开发环境（支持热重载）
+# Development environment (with hot reload)
 npm run dev-all
 
-# 生产环境预览（使用构建后的文件）
+# Production environment preview (using built files)
 npm run start-all
 ```
 
-### 方法2：分别启动前后端
+### Method 2: Start Frontend and Backend Separately
 
-#### 后端安装和运行
+#### Backend Installation and Running
 
-1. 进入服务器目录
+1. Enter the server directory
 ```bash
 cd server
 ```
 
-2. 安装依赖
+2. Install dependencies
 ```bash
 npm install
 ```
 
-3. 启动服务器
+3. Start the server
 ```bash
-# 开发环境（使用nodemon，支持热重载）
+# Development environment (using nodemon, supports hot reload)
 npm run dev
 
-# 生产环境
+# Production environment
 npm start
 ```
 
-服务器将在 http://localhost:3001 运行
+The server will run at http://localhost:3001
 
-#### 前端安装和运行
+#### Frontend Installation and Running
 
-1. 进入客户端目录
+1. Enter the client directory
 ```bash
 cd client
 ```
 
-2. 安装依赖
+2. Install dependencies
 ```bash
 npm install
 ```
 
-3. 启动开发服务器
+3. Start the development server
 ```bash
 npm run dev
 ```
 
-前端将在 http://localhost:5173 运行
+The frontend will run at http://localhost:5173
 
-## 生产环境构建
+## Production Environment Build
 
-### 前端构建
+### Frontend Build
 
 ```bash
 cd client
 npm run build
 ```
 
-构建后的文件将位于`client/dist`目录
+The built files will be located in the `client/dist` directory
 
-## 默认账号
+## Default Accounts
 
-系统预设了以下账号，所有账号的默认密码都是 `123456`：
+The system has preset the following accounts, all with the default password `123456`:
 
-### 管理员账号
-- 用户名: admin
-- 密码: 123456
+### Administrator Account
+- Username: admin
+- Password: 123456
 
-### 学生账号
-- 用户名: 2023001
-- 密码: 123456
+### Student Accounts
+- Username: 2023001
+- Password: 123456
 
-- 用户名: 2023002
-- 密码: 123456
+- Username: 2023002
+- Password: 123456
 
-- 用户名: 2023003
-- 密码: 123456
+- Username: 2023003
+- Password: 123456
 
-## 注意事项
+## Notes
 
-1. 确保Excel文件`名单.xls`位于项目根目录，系统会自动从中加载学生数据
-2. 系统使用模拟数据库，所有数据存储在服务器的 `data` 目录下
-3. 开发环境下，前端和后端分别运行在不同端口，通过CORS配置允许跨域访问
-4. 上传的作业文件会保存在`server/uploads`目录下
-5. 文件上传大小限制为20MB，可在 `.env` 文件中修改
-6. 支持的文件类型包括：pdf, doc, docx, xls, xlsx, ppt, pptx, zip, rar
-7. 文件名需按照指定规则命名，格式为：`{学号}_{姓名}_{作业名称}_{提交日期}`
-8. 定时任务默认每周日凌晨2点执行，可以在 `.env` 文件中修改收集周期
+1. Ensure the Excel file `名单.xls` is located in the project root directory, the system will automatically load student data from it
+2. The system uses mock database, all data is stored in the `data` directory of the server
+3. In development environment, frontend and backend run on different ports, cross-origin access is allowed through CORS configuration
+4. Uploaded assignment files are saved in the `server/uploads` directory
+5. File upload size limit is 20MB, can be modified in the `.env` file
+6. Supported file types include: pdf, doc, docx, xls, xlsx, ppt, pptx, zip, rar
+7. File names must follow the specified rules, format: `{student_id}_{name}_{assignment_name}_{submission_date}`
+8. Scheduled tasks are executed at 2:00 AM every Sunday by default, collection cycle can be modified in the `.env` file
 
-## 项目配置
+## Project Configuration
 
-所有配置项都在服务器的 `.env` 文件中设置：
+All configuration items are set in the server's `.env` file:
 
-- `PORT`: 服务器端口
-- `UPLOAD_DIR`: 文件上传目录
-- `DB_PATH`: 数据库路径
-- `MAX_FILE_SIZE`: 最大文件大小
-- `FILE_NAMING_RULE`: 文件命名规则
-- `COLLECTION_CYCLE`: 作业收集周期
+- `PORT`: Server port
+- `UPLOAD_DIR`: File upload directory
+- `DB_PATH`: Database path
+- `MAX_FILE_SIZE`: Maximum file size
+- `FILE_NAMING_RULE`: File naming rule
+- `COLLECTION_CYCLE`: Assignment collection cycle
 
-## 未来优化方向
+## Future Optimization Directions
 
-1. 实现真正的数据库存储
-2. 添加用户权限细化管理
-3. 增加作业评分功能
-4. 添加作业批注和反馈功能
-5. 完善统计和分析功能
-6. 添加邮件通知功能
+1. Implement real database storage
+2. Add refined user permission management
+3. Add assignment scoring function
+4. Add assignment annotation and feedback functions
+5. Improve statistics and analysis functions
+6. Add email notification function
