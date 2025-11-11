@@ -32,6 +32,7 @@ coverage/
 # 忽略上传的文件和数据文件（在Docker中使用卷挂载）
 uploads/
 data/
+server/db/
 
 # 忽略其他可能的大文件
 *.zip
