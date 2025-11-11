@@ -166,6 +166,7 @@ npm run build
 
 - `PORT`: 服务器端口
 - `UPLOAD_DIR`: 文件上传目录
+- `DB_PATH`: 数据库路径
 - `MAX_FILE_SIZE`: 最大文件大小
 - `FILE_NAMING_RULE`: 文件命名规则
 - `COLLECTION_CYCLE`: 作业收集周期

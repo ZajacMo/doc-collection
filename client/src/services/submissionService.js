@@ -1,10 +1,11 @@
 // 提交服务
 import api from '../utils/axios';
+import { API_ENDPOINTS } from '../config/apiConfig';
 
 // 获取所有提交
 export const getAllSubmissions = async () => {
   try {
-    const response = await api.get('/submissions');
+    const response = await api.get(API_ENDPOINTS.SUBMISSIONS.ALL);
     return response;
   } catch (error) {
     console.error('获取提交列表失败:', error);
@@ -15,7 +16,7 @@ export const getAllSubmissions = async () => {
 // 获取单个提交
 export const getSubmissionById = async (id) => {
   try {
-    const response = await api.get(`/submissions/${id}`);
+    const response = await api.get(API_ENDPOINTS.SUBMISSIONS.DETAIL(id));
     return response;
   } catch (error) {
     console.error('获取提详情失败:', error);
@@ -26,7 +27,7 @@ export const getSubmissionById = async (id) => {
 // 获取用户的提交
 export const getSubmissionsByUser = async (userId) => {
   try {
-    const response = await api.get(`/submissions/user/${userId}`);
+    const response = await api.get(API_ENDPOINTS.SUBMISSIONS.BY_USER(userId));
     return response;
   } catch (error) {
     console.error('获取用户提交记录失败:', error);
@@ -38,7 +39,7 @@ export const getSubmissionsByUser = async (userId) => {
 export const getSubmissionsByAssignment = async (assignmentId) => {
   try {
     // 服务器端实际的端点是/assignments/:id/submissions
-    const response = await api.get(`/assignments/${assignmentId}/submissions`);
+    const response = await api.get(API_ENDPOINTS.ASSIGNMENTS.SUBMISSIONS(assignmentId));
     return response;
   } catch (error) {
     console.error('获取作业提交记录失败:', error);
@@ -100,7 +101,7 @@ export const submitAssignment = async (formData) => {
     console.log('处理后的提交数据:', submissionData);
     
     // 直接发送处理后的submissionData对象
-    const response = await api.post('/submissions', submissionData);
+    const response = await api.post(API_ENDPOINTS.SUBMISSIONS.CREATE, submissionData);
     
     console.log('提交作业响应:', response);
     return response.data;
@@ -118,7 +119,7 @@ export const submitAssignment = async (formData) => {
 // 更新提交
 export const updateSubmission = async (id, submissionData) => {
   try {
-    const response = await api.put(`/submissions/${id}`, submissionData);
+    const response = await api.put(API_ENDPOINTS.SUBMISSIONS.UPDATE(id), submissionData);
     return response;
   } catch (error) {
     console.error('更新提交失败:', error);
@@ -129,7 +130,7 @@ export const updateSubmission = async (id, submissionData) => {
 // 删除提交
 export const deleteSubmission = async (id) => {
   try {
-    const response = await api.delete(`/submissions/${id}`);
+    const response = await api.delete(API_ENDPOINTS.SUBMISSIONS.DELETE(id));
     return response;
   } catch (error) {
     console.error('删除提交失败:', error);
@@ -140,7 +141,7 @@ export const deleteSubmission = async (id) => {
 // 下载提交的文件
 export const downloadSubmission = async (id) => {
   try {
-    const response = await api.get(`/submissions/${id}/download`, {
+    const response = await api.get(API_ENDPOINTS.SUBMISSIONS.DOWNLOAD(id), {
       responseType: 'blob'
     });
     return response;
@@ -181,7 +182,7 @@ export const validateFileType = (file, allowedTypes) => {
 // 获取学生的作业提交状态
 export const getStudentSubmission = async (studentId, assignmentId) => {
   try {
-    const response = await api.get(`/submissions/status/${studentId}/${assignmentId}`);
+    const response = await api.get(API_ENDPOINTS.SUBMISSIONS.STATUS(studentId, assignmentId));
     return response;
   } catch (error) {
     console.error('获取学生提交状态失败:', error);
@@ -224,7 +225,7 @@ export const validateFileName = (fileName, namingRule, userInfo, assignmentTitle
 
 export const exportUnsubmittedListAPI = async (assignmentId) => {
   try {
-    const response = await api.get(`/submissions/export-unsubmitted/${assignmentId}`);
+    const response = await api.get(API_ENDPOINTS.SUBMISSIONS.EXPORT_UNSUBMITTED(assignmentId));
     return response;
   } catch (error) {
     console.error('导出未交名单失败:', error);

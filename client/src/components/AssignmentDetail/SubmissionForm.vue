@@ -87,6 +87,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { submitAssignment } from '../../services/submissionService';
 import { getCurrentUserInfo } from '../../services/userService';
+import { UPLOAD_URL } from '../../config/apiConfig';
 
 export default {
   name: 'SubmissionForm',
@@ -112,7 +113,7 @@ export default {
   setup(props, { emit }) {
     const submitFormRef = ref(null);
     const fileList = ref([]);
-    const uploadUrl = 'http://localhost:3001/api/upload';
+    const uploadUrl = UPLOAD_URL;
     const uploadHeaders = ref({});
     const uploadSuccess = ref(false);
     const originalFile = ref(null);

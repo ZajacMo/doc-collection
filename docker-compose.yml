@@ -10,11 +10,12 @@ services:
       - "3001:3001"
     volumes:
       - backend-uploads:/app/uploads
-      - backend-data:/app/db
+      - /mnt/d/Projects/webProjeect/doc-collection/server/db:/app/db
     environment:
       - NODE_ENV=production
       - PORT=3001
       - UPLOAD_DIR=./uploads
+      - DB_PATH=./db/db
       - MAX_FILE_SIZE=20971520
     restart: unless-stopped
     networks:
@@ -32,10 +33,9 @@ services:
     networks:
       - app-network
 
-# 使用命名卷而不是绑定挂载，更适合生产环境
+# 只保留uploads的命名卷
 volumes:
   backend-uploads:
-  backend-data:
 
 networks:
   app-network:

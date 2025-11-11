@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 // 数据库连接模块
-const { initDatabase } = require('./db/db');
+const { initDatabase } = require(process.env.DB_PATH || './db/db');
 
 // 创建Express应用
 const app = express();
@@ -16,8 +16,9 @@ const PORT = 3001; // 直接设置端口为3001，避免环境变量配置问题
 
 // 中间件配置
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// 增加请求体大小限制为20MB，与MAX_FILE_SIZE保持一致
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // 静态文件服务 - 用于提供文件下载
     app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

@@ -14,7 +14,7 @@ RUN npm install --production
 COPY server/ ./
 
 # 创建必要的目录
-RUN mkdir -p uploads data
+RUN mkdir -p uploads db
 
 # 设置环境变量
 ENV NODE_ENV=production

@@ -59,7 +59,7 @@ const createStorage = (baseDestinationPath) => {
 // 创建上传实例
 const regularUpload = multer({ 
   storage: createStorage('uploads'),
-  limits: { fileSize: 10 * 1024 * 1024 } // 限制文件大小为10MB
+  limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024 } // 使用环境变量或默认10MB
 });
 
 // 普通文件上传

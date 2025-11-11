@@ -1,10 +1,11 @@
 // 作业服务
 import api from '../utils/axios';
+import { API_ENDPOINTS } from '../config/apiConfig';
 
 // 获取所有作业
 export const getAllAssignments = async () => {
   try {
-    const response = await api.get('/assignments');
+    const response = await api.get(API_ENDPOINTS.ASSIGNMENTS.ALL);
     return response;
   } catch (error) {
     console.error('获取作业列表失败:', error);
@@ -15,7 +16,7 @@ export const getAllAssignments = async () => {
 // 获取单个作业
 export const getAssignmentById = async (id) => {
   try {
-    const response = await api.get(`/assignments/${id}`);
+    const response = await api.get(API_ENDPOINTS.ASSIGNMENTS.BY_ID(id));
     return response;
   } catch (error) {
     console.error('获取作业详情失败:', error);

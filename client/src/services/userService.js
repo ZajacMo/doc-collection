@@ -1,5 +1,6 @@
 // 用户服务
 import api from '../utils/axios';
+import { API_ENDPOINTS } from '../config/apiConfig';
 
 // 用户登录
 export const loginUser = async (studentId, password) => {
@@ -7,8 +8,8 @@ export const loginUser = async (studentId, password) => {
     // console.log('开始登录请求...');
     // console.log('请求参数:', { studentId, password });
     // console.log('请求URL基础地址:', api.defaults.baseURL);
-    // console.log('完整请求路径:', api.defaults.baseURL + '/users/login');
-    const response = await api.post('/users/login', {
+    // console.log('完整请求路径:', api.defaults.baseURL + API_ENDPOINTS.USERS.LOGIN);
+    const response = await api.post(API_ENDPOINTS.USERS.LOGIN, {
       studentId,
       password
     });
@@ -50,7 +51,7 @@ export const loginUser = async (studentId, password) => {
 // 获取所有用户
 export const getAllUsers = async () => {
   try {
-    const response = await api.get('/users');
+    const response = await api.get(API_ENDPOINTS.USERS.ALL);
     return response;
   } catch (error) {
     console.error('获取用户列表失败:', error);
@@ -61,7 +62,7 @@ export const getAllUsers = async () => {
 // 获取单个用户
 export const getUserById = async (id) => {
   try {
-    const response = await api.get(`/users/${id}`);
+    const response = await api.get(API_ENDPOINTS.USERS.BY_ID(id));
     return response;
   } catch (error) {
     console.error('获取用户信息失败:', error);
