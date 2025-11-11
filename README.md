@@ -3,6 +3,17 @@
 [中文](README_CN.md)
 
 A web application system for teachers to collect and manage student assignments.
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between;">
+    <div style="width: 65%; margin-bottom: 10px;">
+        <img src="src/image.png" alt="alt text" >
+        <img src="src/image-1.png" alt="alt text" >
+        <img src="src/image-2.png" alt="alt text" >
+    </div>
+    <div style="width: 30%; margin-bottom: 10px;">
+        <img src="src/image-3.png" alt="alt text" style="width: 100%;">
+        <img src="src/image-4.png" alt="alt text" style="width: 100%;">
+    </div>
+</div>
 
 ## Project Structure
 

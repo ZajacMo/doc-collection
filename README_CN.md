@@ -3,6 +3,17 @@
 [English](README.md)
 
 一个用于教师收集、管理学生作业的Web应用系统。
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between;">
+    <div style="width: 65%; margin-bottom: 10px;">
+        <img src="src/image.png" alt="alt text" >
+        <img src="src/image-1.png" alt="alt text" >
+        <img src="src/image-2.png" alt="alt text" >
+    </div>
+    <div style="width: 30%; margin-bottom: 10px;">
+        <img src="src/image-3.png" alt="alt text" style="width: 100%;">
+        <img src="src/image-4.png" alt="alt text" style="width: 100%;">
+    </div>
+</div>
 
 ## 项目结构
 
