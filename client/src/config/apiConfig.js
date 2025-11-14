@@ -2,9 +2,8 @@
 // 集中管理所有API相关的配置信息
 
 // 后端API基础URL
-// 在生产环境中，由于使用了Nginx代理，可以直接使用相对路径'/api'
-// 在开发环境中，需要使用完整的localhost地址
-const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
+// 统一使用相对路径，通过开发代理与生产Nginx转发到后端
+const API_BASE_URL = '/api';
 
 // 文件上传URL
 const UPLOAD_URL = `${API_BASE_URL}/upload`;

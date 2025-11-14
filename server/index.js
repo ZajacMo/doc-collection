@@ -12,7 +12,8 @@ const { initDatabase } = require(process.env.DB_PATH || './db/db');
 const app = express();
 
 // 设置端口
-const PORT = 3001; // 直接设置端口为3001，避免环境变量配置问题
+const PORT = Number(process.env.PORT) || 3001;
+const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
 
 // 中间件配置
 app.use(cors());
@@ -21,10 +22,10 @@ app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // 静态文件服务 - 用于提供文件下载
-    app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+    app.use('/uploads', express.static(path.join(__dirname, UPLOAD_DIR)));
 
     // 确保必要目录存在
-    const directories = ['uploads'];
+    const directories = [UPLOAD_DIR];
     directories.forEach(dir => {
       const dirPath = path.join(__dirname, dir);
       if (!fs.existsSync(dirPath)) {
