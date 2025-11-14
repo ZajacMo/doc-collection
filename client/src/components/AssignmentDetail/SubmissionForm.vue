@@ -73,9 +73,18 @@
               已提交：{{ submissionInfo.submissionInfo.fileName }}
             </el-tag>
           </div>
-          <div slot="tip" class="el-upload__tip">
-            支持的文件大小不超过20MB
-          </div>
+      <div slot="tip" class="el-upload__tip">
+        支持的文件大小不超过20MB
+        <div style="margin-top:6px;color:#606266;">
+          允许类型：
+          <template v-if="allowedFileTypes && allowedFileTypes.length > 0">
+            {{ allowedFileTypes.join(', ') }}
+          </template>
+          <template v-else>
+            不限类型
+          </template>
+        </div>
+      </div>
         </el-upload>
       </el-form-item>
     </el-form>
@@ -85,7 +94,7 @@
 <script>
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { submitAssignment } from '../../services/submissionService';
+import { submitAssignment, validateFileType } from '../../services/submissionService';
 import { getCurrentUserInfo } from '../../services/userService';
 import { UPLOAD_URL } from '../../config/apiConfig';
 
@@ -107,6 +116,10 @@ export default {
     submissionInfo: {
       type: Object,
       required: true
+    },
+    allowedFileTypes: {
+      type: Array,
+      default: () => []
     }
   },
   emits: ['submission-success'],
@@ -168,6 +181,15 @@ export default {
       if (file.size > maxSize) {
         ElMessage.error('文件大小不能超过20MB');
         return false;
+      }
+
+      // 检查文件类型（来自作业配置）
+      if (Array.isArray(props.allowedFileTypes) && props.allowedFileTypes.length > 0) {
+        const isValidType = validateFileType(file, props.allowedFileTypes);
+        if (!isValidType) {
+          ElMessage.error(`不支持的文件类型，仅允许：${props.allowedFileTypes.join(', ')}`);
+          return false;
+        }
       }
       return true;
     };

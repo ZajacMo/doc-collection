@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 // 数据库连接模块
-const { initDatabase } = require(process.env.DB_PATH || './db/db');
+const { initDatabase, closeDb } = require(process.env.DB_PATH || './db/db');
 
 // 创建Express应用
 const app = express();
@@ -102,7 +102,7 @@ async function startServer() {
     })
     
     // 启动服务器
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`服务器运行在 http://localhost:${PORT}`);
       console.log('API接口列表:');
       console.log('  GET    /api/health             - 健康检查');
@@ -128,6 +128,23 @@ async function startServer() {
       console.log('  DELETE /api/submissions/:id    - 删除提交');
       console.log('  GET    /api/submissions/:id/download - 下载文件');
     });
+
+    server.on('error', (err) => {
+      if (err && err.code === 'EADDRINUSE') {
+        console.error(`端口已被占用: ${PORT}`);
+        process.exit(1);
+      }
+    });
+
+    const shutdown = () => {
+      server.close(() => {
+        try { closeDb(); } catch {}
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
   } catch (error) {
     console.error('启动服务器失败:', error);
     process.exit(1);
@@ -139,3 +156,21 @@ startServer();
 
 // 导出app供测试使用
 module.exports = app;
+// 简易鉴权中间件：从 Authorization 解析用户并注入 req.user
+app.use(async (req, res, next) => {
+  try {
+    const auth = req.headers.authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.substring(7) : '';
+    if (!token) return next();
+    const db = await initDatabase().then(() => require('./db/db').getDb());
+    await new Promise((resolve) => setImmediate(resolve));
+    db.get('SELECT id, studentId, name, role FROM users WHERE id = ?', [token], (err, row) => {
+      if (!err && row) {
+        req.user = row;
+      }
+      next();
+    });
+  } catch {
+    next();
+  }
+});

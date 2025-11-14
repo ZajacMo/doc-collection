@@ -168,6 +168,16 @@ The system has preset the following accounts, all with the default password `123
 2. The system uses mock database, all data is stored in the `data` directory of the server
 3. In development environment, frontend and backend run on different ports, cross-origin access is allowed through CORS configuration
 4. Uploaded assignment files are saved in the `server/uploads` directory
+
+## 文件类型限制与替换
+
+- 作业的允许文件类型由 `assignments` 表的 `fileTypes` 字段定义，前端创建/编辑作业时可配置，上传与提交将按照该配置校验。
+- 前端上传前会即时验证文件扩展名与大小（默认不超过 20MB），非法类型会提示并阻止上传。
+- 后端上传接口会根据 `assignmentId` 读取 `fileTypes` 并再校验，非法类型将拒绝并删除已保存的文件，返回 `400 不支持的文件类型`。
+- 当用户重新提交并替换已提交文件时，后端以事务原子化更新：
+  - 更新提交记录为新文件
+  - 删除旧文件，若删除失败将回滚并清理新文件，保证数据一致性与空间释放。
+
 5. File upload size limit is 20MB, can be modified in the `.env` file
 6. Supported file types include: pdf, doc, docx, xls, xlsx, ppt, pptx, zip, rar
 7. File names must follow the specified rules, format: `{student_id}_{name}_{assignment_name}_{submission_date}`

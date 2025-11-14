@@ -35,6 +35,7 @@
         :assignment-name="assignment.title"
         :is-assignment-expired="isAssignmentExpired(assignment.deadline)"
         :submission-info="submissionInfo"
+        :allowed-file-types="assignment?.fileTypes || []"
         @submission-success="loadData"
       />
       

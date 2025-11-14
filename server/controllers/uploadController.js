@@ -4,6 +4,7 @@ const router = express.Router();
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const { getDb } = require('../db/db');
 
 // 配置存储 - 确保目录存在
 const ensureDir = (dirPath) => {
@@ -63,20 +64,52 @@ const regularUpload = multer({
 });
 
 // 普通文件上传
-router.post('/', regularUpload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: '没有文件被上传' });
+router.post('/', regularUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: '没有文件被上传' });
+    }
+
+    const assignmentId = req.body.assignmentId;
+    if (!assignmentId) {
+      // 清理已保存文件避免脏数据
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(400).json({ message: '缺少作业ID，无法校验文件类型' });
+    }
+
+    // 从数据库读取该作业允许的文件类型
+    const db = getDb();
+    const assignment = await new Promise((resolve, reject) => {
+      db.get('SELECT fileTypes FROM assignments WHERE id = ?', [assignmentId], (err, row) => {
+        if (err) return reject(err);
+        resolve(row);
+      });
+    });
+
+    let allowed = [];
+    if (assignment && assignment.fileTypes) {
+      try { allowed = JSON.parse(assignment.fileTypes) || []; } catch { allowed = []; }
+    }
+
+    const ext = path.extname(req.file.originalname).slice(1).toLowerCase();
+    if (Array.isArray(allowed) && allowed.length > 0 && !allowed.includes(ext)) {
+      // 类型不匹配，删除文件并返回错误
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(400).json({ message: '不支持的文件类型' });
+    }
+
+    const renamedFileName = req.file.filename;
+    res.json({
+      id: Date.now().toString(),
+      fileName: renamedFileName,
+      filePath: req.file.path.replace(__dirname, '').replace(/^\\/, ''),
+      fileSize: req.file.size
+    });
+  } catch (error) {
+    // 发生错误时尝试清理临时文件
+    if (req.file?.path) { try { fs.unlinkSync(req.file.path); } catch {} }
+    res.status(500).json({ message: error.message || '文件上传处理失败' });
   }
-  
-  // 获取重命名后的文件名
-  const renamedFileName = req.file.filename;
-  
-  res.json({
-    id: Date.now().toString(),
-    fileName: renamedFileName,
-    filePath: req.file.path.replace(__dirname, '').replace(/^\\/, ''),
-    fileSize: req.file.size
-  });
 });
 
 module.exports = router;

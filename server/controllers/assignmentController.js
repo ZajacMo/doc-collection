@@ -27,6 +27,13 @@ const query = (sql, params = []) => {
               row.fileTypes = [];
             }
           }
+          if (row.relativeStudents !== undefined && row.relativeStudents !== null) {
+            try {
+              row.relativeStudents = JSON.parse(row.relativeStudents);
+            } catch (e) {
+              row.relativeStudents = [];
+            }
+          }
           return row;
         });
         resolve(parsedRows);
@@ -105,6 +112,16 @@ setupCollectionSchedule();
 exports.getAllAssignments = async (req, res) => {
   try {
     const assignments = await query('SELECT * FROM assignments ORDER BY createTime DESC');
+    // 学生可见性过滤
+    const user = req.user;
+    if (user && user.role === 'student') {
+      const sid = user.studentId;
+      const filtered = assignments.filter(a => {
+        const rs = Array.isArray(a.relativeStudents) ? a.relativeStudents : [];
+        return rs.length === 0 || rs.includes(sid);
+      });
+      return res.json(filtered);
+    }
     res.json(assignments);
   } catch (error) {
     res.status(500).json({ message: '获取作业列表失败', error: error.message });
@@ -120,6 +137,14 @@ exports.getAssignmentById = async (req, res) => {
     const assignment = await getOne('SELECT * FROM assignments WHERE id = ?', [assignmentId]);
     if (!assignment) {
       return res.status(404).json({ message: '作业不存在' });
+    }
+    // 学生访问可见性校验
+    const user = req.user;
+    if (user && user.role === 'student') {
+      const rs = Array.isArray(assignment.relativeStudents) ? assignment.relativeStudents : [];
+      if (rs.length > 0 && !rs.includes(user.studentId)) {
+        return res.status(403).json({ message: '无权访问该作业' });
+      }
     }
     
     // 将作业信息和提交记录一起返回
@@ -137,12 +162,21 @@ exports.createAssignment = async (req, res) => {
     const newId = (maxIdRow?.maxId || 0) + 1;
     
     const now = new Date().toISOString();
-    const { title, description = '', deadline, fileTypes = ['pdf', 'doc', 'docx'] } = req.body;
+    const { title, description = '', deadline, fileTypes = ['pdf', 'doc', 'docx'], relativeStudents = [] } = req.body;
+
+    // 确保relativeStudents列存在
+    try {
+      const db = getDb();
+      await new Promise((resolve) => {
+        db.run('ALTER TABLE assignments ADD COLUMN relativeStudents TEXT', () => resolve());
+      });
+    } catch (e) {
+      // 列已存在时忽略错误
+    }
     
     await run(
-      `INSERT INTO assignments (id, title, description, deadline, createTime, updateTime, fileTypes) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      
+      `INSERT INTO assignments (id, title, description, deadline, createTime, updateTime, fileTypes, relativeStudents) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newId.toString(),
         title,
@@ -150,7 +184,8 @@ exports.createAssignment = async (req, res) => {
         deadline,
         now,
         now,
-        JSON.stringify(fileTypes)
+        JSON.stringify(fileTypes),
+        JSON.stringify(Array.isArray(relativeStudents) ? relativeStudents : [])
       ]
     );
     
@@ -161,9 +196,48 @@ exports.createAssignment = async (req, res) => {
       deadline,
       createTime: now,
       updateTime: now,
-      fileTypes
+      fileTypes,
+      relativeStudents: Array.isArray(relativeStudents) ? relativeStudents : []
     };
     
+    // 生成未提交记录（Unsubmitted）
+    try {
+      const db = getDb();
+      db.run('BEGIN TRANSACTION');
+      let targetStudentIds = [];
+      if (Array.isArray(relativeStudents) && relativeStudents.length > 0) {
+        targetStudentIds = relativeStudents;
+      } else {
+        const students = await query('SELECT studentId FROM users WHERE role = ?', ['student']);
+        targetStudentIds = students.map(s => s.studentId);
+      }
+      // 获取当前最大ID一次
+      const maxSubRow = await getOne('SELECT MAX(CAST(id AS INTEGER)) as maxId FROM submissions');
+      let baseId = (maxSubRow?.maxId || 0);
+      const submitTime = new Date().toISOString();
+      for (const sid of targetStudentIds) {
+        baseId += 1;
+        await run(
+          'INSERT INTO submissions (id, assignmentId, studentId, fileName, filePath, fileSize, submitTime, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            baseId.toString(),
+            newId.toString(),
+            sid,
+            '',
+            '',
+            0,
+            submitTime,
+            'Unsubmitted'
+          ]
+        );
+      }
+      db.run('COMMIT');
+    } catch (e) {
+      try { getDb().run('ROLLBACK'); } catch {}
+      // 不阻断创建作业流程，仅记录错误
+      console.error('生成未提交记录失败:', e);
+    }
+
     res.status(201).json(newAssignment);
   } catch (error) {
     res.status(500).json({ message: '创建作业失败', error: error.message });
@@ -173,7 +247,7 @@ exports.createAssignment = async (req, res) => {
 // 更新作业
 exports.updateAssignment = async (req, res) => {
   try {
-    const { title, description, deadline, fileTypes } = req.body;
+    const { title, description, deadline, fileTypes, relativeStudents } = req.body;
     const now = new Date().toISOString();
     
     // 构建更新字段
@@ -197,6 +271,17 @@ exports.updateAssignment = async (req, res) => {
       updates.push('fileTypes = ?');
       params.push(JSON.stringify(fileTypes));
     }
+    if (relativeStudents !== undefined) {
+      // 确保relativeStudents列存在
+      try {
+        const db = getDb();
+        await new Promise((resolve) => {
+          db.run('ALTER TABLE assignments ADD COLUMN relativeStudents TEXT', () => resolve());
+        });
+      } catch {}
+      updates.push('relativeStudents = ?');
+      params.push(JSON.stringify(Array.isArray(relativeStudents) ? relativeStudents : []));
+    }
     
     // 始终更新updateTime
     updates.push('updateTime = ?');
@@ -212,6 +297,52 @@ exports.updateAssignment = async (req, res) => {
     
     if (result.changes > 0) {
       const updatedAssignment = await getOne('SELECT * FROM assignments WHERE id = ?', [req.params.id]);
+      // 解析relativeStudents以便后续使用
+      let targetStudents = [];
+      try {
+        const rs = relativeStudents !== undefined ? relativeStudents : updatedAssignment.relativeStudents;
+        targetStudents = Array.isArray(rs) ? rs : JSON.parse(rs || '[]');
+      } catch { targetStudents = []; }
+
+      // 生成缺失的 Unsubmitted 提交记录（不影响主更新返回）
+      try {
+        const db = getDb();
+        db.run('BEGIN TRANSACTION');
+        // 计算目标学生集合
+        if (!Array.isArray(targetStudents) || targetStudents.length === 0) {
+          const students = await query('SELECT studentId FROM users WHERE role = ?', ['student']);
+          targetStudents = students.map(s => s.studentId);
+        }
+        // 已存在的提交记录对应学生
+        const existing = await query('SELECT studentId FROM submissions WHERE assignmentId = ?', [req.params.id]);
+        const existingSet = new Set(existing.map(r => r.studentId));
+        const toInsert = targetStudents.filter(sid => !existingSet.has(sid));
+        if (toInsert.length > 0) {
+          const maxSubRow = await getOne('SELECT MAX(CAST(id AS INTEGER)) as maxId FROM submissions');
+          let baseId = (maxSubRow?.maxId || 0);
+          for (const sid of toInsert) {
+            baseId += 1;
+            await run(
+              'INSERT INTO submissions (id, assignmentId, studentId, fileName, filePath, fileSize, submitTime, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+              [
+                baseId.toString(),
+                req.params.id,
+                sid,
+                '',
+                '',
+                0,
+                now,
+                'Unsubmitted'
+              ]
+            );
+          }
+        }
+        db.run('COMMIT');
+      } catch (e) {
+        try { getDb().run('ROLLBACK'); } catch {}
+        // 仅记录错误，不影响主响应
+        console.error('更新作业后生成未提交记录失败:', e);
+      }
       res.json(updatedAssignment);
     } else {
       res.status(404).json({ message: '作业不存在' });
@@ -258,9 +389,21 @@ exports.getAssignmentSubmissions = async (req, res) => {
   try {
     const assignmentId = req.params.id;
     
-    // 从数据库查询该作业的所有提交记录
     const submissions = await query(
-      'SELECT * FROM submissions WHERE assignmentId = ? ORDER BY submitTime DESC',
+      `SELECT 
+         s.id,
+         s.assignmentId,
+         s.studentId,
+         u.name AS studentName,
+         s.fileName,
+         s.filePath,
+         s.fileSize,
+         s.submitTime,
+         s.status
+       FROM submissions s
+       LEFT JOIN users u ON s.studentId = u.studentId
+       WHERE s.assignmentId = ?
+       ORDER BY s.submitTime DESC`,
       [assignmentId]
     );
     

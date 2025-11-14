@@ -54,9 +54,20 @@ const run = (sql, params = []) => {
 // 获取所有提交
 exports.getAllSubmissions = async (req, res) => {
   try {
-    // 从数据库查询所有提交记录，按提交时间降序排序
     const allSubmissions = await query(
-      'SELECT * FROM submissions ORDER BY submitTime DESC',
+      `SELECT 
+         s.id,
+         s.assignmentId,
+         s.studentId,
+         u.name AS studentName,
+         s.fileName,
+         s.filePath,
+         s.fileSize,
+         s.submitTime,
+         s.status
+       FROM submissions s
+       LEFT JOIN users u ON s.studentId = u.studentId
+       ORDER BY s.submitTime DESC`,
       []
     );
     
@@ -69,7 +80,22 @@ exports.getAllSubmissions = async (req, res) => {
 // 获取单个提交
 exports.getSubmissionById = async (req, res) => {
   try {
-    const submission = await getOne('SELECT * FROM submissions WHERE id = ?', [req.params.id]);
+    const submission = await getOne(
+      `SELECT 
+         s.id,
+         s.assignmentId,
+         s.studentId,
+         u.name AS studentName,
+         s.fileName,
+         s.filePath,
+         s.fileSize,
+         s.submitTime,
+         s.status
+       FROM submissions s
+       LEFT JOIN users u ON s.studentId = u.studentId
+       WHERE s.id = ?`,
+      [req.params.id]
+    );
     if (submission) {
       res.json(submission);
     } else {
@@ -85,9 +111,21 @@ exports.getSubmissionsByUser = async (req, res) => {
   try {
     const userId = req.params.userId;
     
-    // 从数据库查询用户的所有提交记录，按提交时间降序排序
     const userSubmissions = await query(
-      'SELECT * FROM submissions WHERE studentId = ? ORDER BY submitTime DESC',
+      `SELECT 
+         s.id,
+         s.assignmentId,
+         s.studentId,
+         u.name AS studentName,
+         s.fileName,
+         s.filePath,
+         s.fileSize,
+         s.submitTime,
+         s.status
+       FROM submissions s
+       LEFT JOIN users u ON s.studentId = u.studentId
+       WHERE s.studentId = ?
+       ORDER BY s.submitTime DESC`,
       [userId]
     );
     
@@ -140,49 +178,88 @@ exports.createSubmission = async (req, res) => {
     
    
     // 检查作业是否存在
-    const assignment = await getOne('SELECT id, title, namingRule, deadline FROM assignments WHERE id = ?', [assignmentId]);
+    const assignment = await getOne('SELECT id, title, deadline, fileTypes FROM assignments WHERE id = ?', [assignmentId]);
     if (!assignment) {
       return res.status(404).json({ message: '作业不存在' });
     }
     
-    // 检查是否已过截止日期
-    const deadline = new Date(assignment.deadline);
-    const now = new Date();
-    if (now > deadline) {
-      return res.status(400).json({ message: '作业提交已截止' });
-    }
-    
-    // 检查必要的文件信息
-    if (!fileName || !filePath) {
-      return res.status(400).json({ message: '缺少文件信息' });
-    }
+  // 检查是否已过截止日期
+  const deadline = new Date(assignment.deadline);
+  const now = new Date();
+  if (now > deadline) {
+    return res.status(400).json({ message: '作业提交已截止' });
+  }
+  
+  // 检查必要的文件信息
+  if (!fileName || !filePath) {
+    return res.status(400).json({ message: '缺少文件信息' });
+  }
+
+    // 校验文件类型（与上传保持一致的防线）
+    try {
+      const rawFileTypes = assignment.fileTypes || '[]';
+      const allowedTypes = Array.isArray(rawFileTypes) ? rawFileTypes : JSON.parse(rawFileTypes);
+      const ext = (fileName.split('.').pop() || '').toLowerCase();
+      if (Array.isArray(allowedTypes) && allowedTypes.length > 0 && !allowedTypes.includes(ext)) {
+        return res.status(400).json({ message: '不支持的文件类型' });
+      }
+    } catch {}
     
     // 检查用户是否已提交
     const existingSubmission = await getOne(
-      'SELECT id FROM submissions WHERE studentId = ? AND assignmentId = ?',
+      'SELECT id, fileName, filePath, fileSize FROM submissions WHERE studentId = ? AND assignmentId = ?',
       [studentId, assignmentId]
     );
     
     const submitTime = new Date().toISOString();
     
     if (existingSubmission) {
-      console.log('更新现有提交记录:', existingSubmission.id);
-      
-      // 更新提交
-      await run(
-        'UPDATE submissions SET fileName = ?, filePath = ?, fileSize = ?, submitTime = ?, status = ? WHERE id = ?',
-        [
-          fileName,
-          filePath,
-          fileSize || 0,
-          submitTime,
-          'submitted',
-          existingSubmission.id
-        ]
-      );
-      
-      const updatedSubmission = await getOne('SELECT * FROM submissions WHERE id = ?', [existingSubmission.id]);
-      res.json(updatedSubmission);
+      console.log('更新现有提交记录:', existingSubmission);
+
+      const db = getDb();
+      const oldPath = existingSubmission.filePath;
+      const oldName = existingSubmission.fileName || '';
+      const extOld = (oldName.split('.').pop() || (oldPath ? oldPath.split('.').pop() : '')).toLowerCase();
+      const extNew = (fileName.split('.').pop() || '').toLowerCase();
+      console.log('文件类型对比:', { extOld, extNew });
+
+      try {
+        db.run('BEGIN TRANSACTION');
+        await run(
+          'UPDATE submissions SET fileName = ?, filePath = ?, fileSize = ?, submitTime = ?, status = ? WHERE id = ?',
+          [
+            fileName,
+            filePath,
+            fileSize || 0,
+            submitTime,
+            'submitted',
+            existingSubmission.id
+          ]
+        );
+
+        // 仅在类型变化时删除旧文件
+        const shouldDeleteOld = extOld && extNew && extOld !== extNew;
+        if (shouldDeleteOld && oldPath) {
+          try {
+            const absoluteOldPath = path.isAbsolute(oldPath) ? oldPath : path.join(__dirname, '..', oldPath);
+            fs.unlinkSync(absoluteOldPath);
+          } catch (e) {
+            db.run('ROLLBACK');
+            try {
+              const absoluteNewPath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '..', filePath);
+              fs.unlinkSync(absoluteNewPath);
+            } catch {}
+            return res.status(500).json({ message: '替换旧文件失败' });
+          }
+        }
+
+        db.run('COMMIT');
+        const updatedSubmission = await getOne('SELECT * FROM submissions WHERE id = ?', [existingSubmission.id]);
+        return res.json(updatedSubmission);
+      } catch (e) {
+        try { db.run('ROLLBACK'); } catch {}
+        return res.status(500).json({ message: '提交更新失败' });
+      }
     } else {
       console.log('创建新提交记录');
       // 获取最大ID

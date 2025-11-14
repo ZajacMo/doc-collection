@@ -21,8 +21,12 @@
             @change="handleFilterChange"
           >
             <el-option label="全部" value="all"></el-option>
-            <el-option label="已提交" value="submitted"></el-option>
-            <el-option label="已逾期" value="late"></el-option>
+            <el-option
+              v-for="opt in statusOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            ></el-option>
           </el-select>
         </el-col>
         <el-col :span="8">
@@ -58,18 +62,12 @@
       <el-table-column prop="fileName" label="文件名" min-width="180"></el-table-column>
       <el-table-column prop="status" label="状态" min-width="80">
         <template #default="{ row }">
-          <el-tag 
-            v-if="row && row.status === 'submitted'"
-            type="success"
-          >
-            已提交
-          </el-tag>
-          <el-tag 
-            v-else-if="row && row.status === 'late'"
-            type="danger"
-          >
-            已逾期
-          </el-tag>
+          <template v-if="row">
+            <el-tag v-if="getStatusTag(row).text" :type="getStatusTag(row).type">
+              {{ getStatusTag(row).text }}
+            </el-tag>
+            <span v-else>-</span>
+          </template>
           <span v-else>-</span>
         </template>
       </el-table-column>
@@ -151,7 +149,8 @@ export default {
       
       // 按状态筛选
       if (statusFilter.value !== 'all') {
-        result = result.filter(submission => submission.status === statusFilter.value);
+        const target = (statusFilter.value || '').toLowerCase();
+        result = result.filter(submission => (submission.status || '').toLowerCase() === target);
       }
       
       // 按关键词搜索
@@ -175,6 +174,31 @@ export default {
       const end = start + pageSize.value;
       return filteredSubmissions.value.slice(start, end);
     });
+
+    const getStatusTag = (row) => {
+      const s = (row?.status || '').toLowerCase();
+      const map = {
+        submitted: { text: '已提交', type: 'success' },
+        late: { text: '已逾期', type: 'danger' },
+        unsubmitted: { text: '未提交', type: 'info' },
+        expired: { text: '已完结', type: 'info' }
+      };
+      return map[s] || { text: '', type: 'info' };
+    };
+    
+    const statusOptions = computed(() => {
+      const set = new Set((props.allSubmissions || []).map(s => (s.status || '').toLowerCase()));
+      const map = {
+        submitted: '已提交',
+        late: '已逾期',
+        unsubmitted: '未提交',
+        expired: '已完结'
+      };
+      return Array.from(set)
+        .filter(s => s)
+        .map(s => ({ value: s, label: map[s] || s }));
+    });
+
 
     /**
      * 处理筛选条件变化
@@ -219,6 +243,7 @@ export default {
     };
 
     return {
+      statusOptions,
       assignmentFilter,
       statusFilter,
       searchKeyword,
@@ -230,6 +255,7 @@ export default {
       handleSearch,
       handleSizeChange,
       handleCurrentChange,
+      getStatusTag,
       formatDate
     };
   }
