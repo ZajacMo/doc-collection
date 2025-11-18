@@ -76,7 +76,7 @@
     <SubmissionStats 
       v-if="assignment && userInfo?.role === 'admin'" 
       :total-students="allStudents"
-      :submitted-count="submissionList.length"
+      :submitted-count="submissionList.filter(sub => sub.status === 'submitted').length"
     />
 
     <!-- 提交列表 -->

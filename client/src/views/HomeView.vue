@@ -94,7 +94,7 @@ export default {
         const submission = submissions.value.find(s => s.assignmentId === assignment.id);
         return {
           ...assignment,
-          status: submission ? 'submitted' : isAssignmentExpired(assignment.deadline) ? 'late' : 'pending'
+          status: submission?.status === 'submitted' ? 'submitted' : isAssignmentExpired(assignment.deadline) ? 'late' : 'pending'
         };
       });
     });
@@ -123,12 +123,12 @@ export default {
         
         // 计算待提交和紧急作业数量
         pendingAssignments.value = assignments.value.filter(assignment => {
-          const isSubmitted = submissions.value.some(s => s.assignmentId === assignment.id);
+          const isSubmitted = submissions.value.some(s => s.assignmentId === assignment.id && s.status === 'submitted');
           return !isSubmitted && !isAssignmentExpired(assignment.deadline);
         }).length;
         
         urgentAssignments.value = assignments.value.filter(assignment => {
-          const isSubmitted = submissions.value.some(s => s.assignmentId === assignment.id);
+          const isSubmitted = submissions.value.some(s => s.assignmentId === assignment.id && s.status === 'submitted');
           return !isSubmitted && !isAssignmentExpired(assignment.deadline) && isAssignmentUrgent(assignment.deadline);
         }).length;
         
@@ -144,6 +144,7 @@ export default {
         // 获取最近的5条提交记录
         recentSubmissionsData.value = [...submissions.value]
           .sort((a, b) => new Date(b.submitTime) - new Date(a.submitTime))
+          .filter(s => s.status === 'submitted') // 只显示已提交的记录
           .slice(0, 5)
           .map(submission => {
             // 查找对应的作业信息

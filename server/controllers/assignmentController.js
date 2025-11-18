@@ -497,7 +497,7 @@ exports.getMissingSubmissions = async (req, res) => {
     
     // 获取已提交的学生ID列表
     const submittedStudentIds = await query(
-      'SELECT studentId FROM submissions WHERE assignmentId = ?',
+      'SELECT studentId FROM submissions WHERE assignmentId = ? and status = "submitted"',
       [assignmentId]
     ).then(rows => rows.map(row => row.studentId));
     
