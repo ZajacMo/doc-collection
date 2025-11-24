@@ -484,6 +484,23 @@ exports.getSubmissionStatus = async (req, res) => {
   }
 };
 
+// 获取作业的学生总数
+exports.getAssignmentUserCount=async(req,res)=>{
+  try{
+    const assignmentId = req.params.id;
+    const userCount = await query(
+      'SELECT COUNT(DISTINCT studentId) as count FROM submissions WHERE assignmentId = ?',
+      [assignmentId]
+    );
+    res.json({
+      assignmentId,
+      userCount: userCount[0].count
+    });
+  } catch (error) {
+    res.status(500).json({ message: '获取学生总数失败', error: error.message });
+  }
+};
+
 // 获取作业的未提交用户
 exports.getMissingSubmissions = async (req, res) => {
   try {

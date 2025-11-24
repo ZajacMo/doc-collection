@@ -69,7 +69,11 @@
             {{ isAssignmentExpired ? '作业已过期，无法上传' : !!submissionInfo && submissionInfo.submissionInfo ? '重新上传' : '选择文件' }}
           </el-button>
           <div slot="default">
-            <el-tag v-if="submissionInfo && submissionInfo.submissionInfo" type="success" size="small" style="margin-top: 5px; display: block;">
+            <el-tag 
+              v-if="submissionInfo && submissionInfo.submissionInfo" 
+              type="success" 
+              size="small" 
+              style="margin-top: 5px; display: block;">
               已提交：{{ submissionInfo.submissionInfo.fileName }}
             </el-tag>
           </div>

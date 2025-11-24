@@ -68,6 +68,19 @@ export const getAssignmentSubmissions = async (id) => {
   }
 };
 
+// 获取作业的学生总数
+export const getAssignmentUserCount = async (id) => {
+  try {
+    const response = await api.get(`/assignments/${id}/userCount`);
+    return response;
+  } catch (error) {
+    console.error('获取学生总数失败:', error);
+    throw error;
+  }
+};
+
+
+
 // 获取作业的未提交用户
 export const getMissingSubmissions = async (id) => {
   try {

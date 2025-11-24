@@ -6,14 +6,14 @@
       style="width: 100%"
       stripe
     >
-      <el-table-column prop="assignmentTitle" label="作业名称" ></el-table-column>
-      <el-table-column prop="submitTime" label="提交时间" min-width="140px">
+      <el-table-column prop="assignmentTitle" label="作业名称" align="center"></el-table-column>
+      <el-table-column prop="submitTime" label="提交时间" min-width="140px" align="center">
         <template #default="scope">
           {{ formatDate(scope.row.submitTime) }}
         </template>
       </el-table-column>
-      <el-table-column prop="fileName" label="文件名" min-width="180px"></el-table-column>
-      <el-table-column prop="status" label="状态">
+      <el-table-column prop="fileName" label="文件名" min-width="180px" align="center"></el-table-column>
+      <el-table-column prop="status" label="状态" align="center">
         <template #default="scope">
           <el-tag 
             v-if="scope.row.status === 'submitted'"

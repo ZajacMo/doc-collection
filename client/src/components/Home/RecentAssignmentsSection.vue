@@ -1,9 +1,9 @@
 <template>
   <div class="recent-assignments-section">
     <h2>近期作业</h2>
-    <el-table :data="recentAssignments" style="width: 100%">
-      <el-table-column prop="title" label="作业名称" max-width="200px"></el-table-column>
-      <el-table-column prop="deadline" label="截止日期">
+    <el-table :data="recentAssignments" style="width: 100%" stripe >
+      <el-table-column prop="title" label="作业名称" align="center"></el-table-column>
+      <el-table-column prop="deadline" label="截止日期" align="center">
           <template #default="{ row }">
             <div v-if="row && row.deadline">
               <span :class="{
@@ -16,7 +16,7 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-      <el-table-column prop="status" label="状态">
+      <el-table-column prop="status" label="状态" align="center">
             <template #default="{ row }">
               <div>
                   <el-tag
@@ -33,7 +33,7 @@
                 </div>
             </template>
           </el-table-column>
-      <el-table-column label="操作" fixed="right">
+      <el-table-column label="操作" fixed="right" align="center">
         <template #default="{ row }">
           <div v-if="row && row.id">
             <el-button 

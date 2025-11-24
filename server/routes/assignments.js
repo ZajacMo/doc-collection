@@ -21,6 +21,9 @@ router.delete('/:id', assignmentController.deleteAssignment);
 // 获取作业的提交情况
 router.get('/:id/submissions', assignmentController.getAssignmentSubmissions);
 
+// 获取作业的学生总数
+router.get('/:id/userCount', assignmentController.getAssignmentUserCount);
+
 // 获取作业的未提交用户
 router.get('/:id/missing', assignmentController.getMissingSubmissions);
 

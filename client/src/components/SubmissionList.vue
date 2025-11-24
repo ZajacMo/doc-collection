@@ -26,7 +26,7 @@
         <template #default="scope">
           <el-tag v-if="scope.row.status === 'submitted'" type="success">已提交</el-tag>
           <el-tag v-else-if="scope.row.status === 'late'" type="danger">已逾期</el-tag>
-          <span v-else>-</span>
+          <el-tag v-else type="info">未提交</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="操作" min-width="120" fixed="right" v-if="isAdmin">

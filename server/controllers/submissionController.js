@@ -337,7 +337,7 @@ exports.getStudentSubmission = async (req, res) => {
     
     // 获取作业信息
     const assignment = await getOne(
-      'SELECT id, title, deadline FROM assignments WHERE id = ?',
+      'SELECT id, title, deadline FROM assignments WHERE id = ? ',
       [assignmentId]
     );
     
@@ -351,7 +351,7 @@ exports.getStudentSubmission = async (req, res) => {
     const isExpired = now > deadline;
     const isUrgent = isExpired && (now - deadline) <= 24 * 60 * 60 * 1000; // 24小时内逾期
     const submission = await getOne(
-      'SELECT id, fileName, fileSize, submitTime FROM submissions WHERE studentId = ? AND assignmentId = ?',
+      'SELECT id, fileName, fileSize, submitTime FROM submissions WHERE studentId = ? AND assignmentId = ? AND status = "submitted"',
       [studentId, assignmentId]
     );
     let status = submission ? (isExpired ? "expired" : "submitted") : (isExpired ? "late" : isUrgent ? "urgent" : "in_progress");

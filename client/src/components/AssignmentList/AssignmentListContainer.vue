@@ -94,10 +94,10 @@ export default {
     const assignmentsWithStatus = computed(() => {
       return assignments.value.map(assignment => {
         // 检查用户是否已提交该作业
-        const submission = submissions.value.find(s => s.assignmentId === assignment.id);
+        const submission = submissions.value.find(s => s.assignmentId === assignment.id)?.status || null;
         return {
           ...assignment,
-          status: submission ? 'submitted' : isAssignmentExpired(assignment.deadline) ? 'late' : 'pending'
+          status: submission
         };
       });
     });

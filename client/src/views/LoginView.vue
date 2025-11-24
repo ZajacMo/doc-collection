@@ -87,7 +87,7 @@ export default {
         // console.log(result);
 
         ElMessage.success('登录成功');
-        console.log(result);
+        // console.log(result);
         
         // 获取并更新用户状态
         const userInfo = await getCurrentUser();

@@ -7,14 +7,14 @@
       border
       max-height="600"
     >
-      <el-table-column type="index" label="序号" min-width="40"></el-table-column>
-      <el-table-column prop="title" label="作业名称" min-width="100"></el-table-column>
-      <el-table-column prop="createTime" label="创建时间" min-width="140">
+      <el-table-column type="index" label="序号" min-width="40" align="center"></el-table-column>
+      <el-table-column prop="title" label="作业名称" min-width="100" align="center"></el-table-column>
+      <el-table-column prop="createTime" label="创建时间" min-width="140" align="center">
         <template v-slot="{ row }">
           {{ row && row.createTime ? formatDate(row.createTime) : '-' }}
         </template>
       </el-table-column>
-      <el-table-column prop="deadline" label="截止日期" min-width="140">
+      <el-table-column prop="deadline" label="截止日期" min-width="140" align="center">
         <template v-slot="{ row }">
           <span v-if="row && row.deadline" :class="{
             'text-danger': isAssignmentExpired(row.deadline),
@@ -25,7 +25,7 @@
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column prop="status" label="我的状态">
+      <el-table-column prop="status" label="我的状态" align="center">
         <template v-slot="{ row }">
           <div v-if="row">
             <el-tag 
@@ -62,7 +62,7 @@
           <el-tag v-else type="info">-</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作"  fixed="right">
+      <el-table-column label="操作"  fixed="right" align="center">
         <template v-slot="{ row }">
           <div v-if="row && row.id">
             <el-button 

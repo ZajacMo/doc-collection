@@ -39,14 +39,6 @@
         @submission-success="loadData"
       />
       
-      <!-- 已提交作业状态卡片 - 当用户已提交作业时显示 -->
-      <!-- <SubmittedStatusCard 
-        v-else-if="submissionInfo" 
-        :user-submission="submissionInfo"
-        :status="assignmentStatus"
-        :is-assignment-expired="isAssignmentExpired(assignment.deadline)"
-        @download="downloadMyFile"
-      /> -->
       
       <!-- 作业状态通知提示 - 根据assignmentStatus动态显示 -->
       <NoticeCard :assignment-status="assignmentStatus"/>
@@ -81,10 +73,9 @@
 
     <!-- 提交列表 -->
     <SubmissionList 
-      v-if="['submitted', 'expired'].includes(assignmentStatus) && ((userInfo?.role === 'admin' && submissionList.length > 0) || 
-                         (submissionInfo && userInfo?.role !== 'admin'))"
+      v-if="userInfo?.role === 'admin'"
       :submission-list="submissionList"
-      :user-submission="submissionInfo.submissionInfo"
+      :user-submission="submissionInfo"
       :is-admin="userInfo?.role === 'admin'"
       @download="downloadFile"
       @delete="deleteSubmission"
@@ -108,18 +99,19 @@ import AssignmentHeader from '../components/AssignmentDetail/AssignmentHeader.vu
 import AssignmentInfo from '../components/AssignmentDetail/AssignmentInfo.vue';
 import AssignmentDescription from '../components/AssignmentDetail/AssignmentDescription.vue';
 import SubmissionForm from '../components/AssignmentDetail/SubmissionForm.vue';
-import SubmittedStatusCard from '../components/AssignmentDetail/SubmittedStatusCard.vue';
+// import SubmittedStatusCard from '../components/AssignmentDetail/SubmittedStatusCard.vue';
 import NoticeCard from '../components/AssignmentDetail/NoticeCard.vue';
 import SubmissionStats from '../components/AssignmentDetail/SubmissionStats.vue';
 import SubmissionList from '../components/SubmissionList.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Loading } from '@element-plus/icons-vue';
-import { getCurrentUserInfo, logoutUser, getAllUsers } from '../services/userService';
+import { getCurrentUserInfo, logoutUser} from '../services/userService';
 import { 
   getAssignmentById, 
   updateAssignment, 
   isAssignmentExpired as checkAssignmentExpired,
-  getMissingSubmissions
+  getMissingSubmissions,
+  getAssignmentUserCount
 } from '../services/assignmentService';
 import { 
   getSubmissionsByAssignment, 
@@ -137,7 +129,6 @@ export default {
     AssignmentInfo,
     AssignmentDescription,
     SubmissionForm,
-    SubmittedStatusCard,
     NoticeCard,
     SubmissionStats,
     SubmissionList
@@ -157,16 +148,6 @@ export default {
       return checkAssignmentExpired(deadline);
     };
     
-    // 检查作业是否紧急（24小时内截止）
-    const isAssignmentUrgent = (deadline) => {
-      if (!deadline) return false;
-      const now = new Date();
-      const deadlineDate = new Date(deadline);
-      const diff = deadlineDate - now;
-      return diff > 0 && diff < 24 * 60 * 60 * 1000;
-    };
-    
-  
     // 使用Vue Router获取路由信息
     const route = useRoute();
     const router = useRouter();
@@ -201,7 +182,7 @@ export default {
         assignment.value = await getAssignmentById(assignmentId);
         submissionInfo.value  = await getStudentSubmission(userInfo.value.studentId, assignmentId);
         assignmentStatus.value = submissionInfo.value["status"];
-        console.log("submissionInfo.value:",submissionInfo.value);
+        // console.log("submissionInfo.value:",submissionInfo.value);
 
         
         // 使用getCurrentUserInfo获取正确的用户信息
@@ -219,25 +200,16 @@ export default {
         if (studentName) {
           localStorage.setItem('studentName', studentName);
         }
-        const userId = currentUserInfo?.id || (localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.id : null);
-                
+
         // 如果是管理员，获取所有提交记录和学生总数
         if (currentUserInfo?.role === 'admin') {
           const submissionListData = await getSubmissionsByAssignment(assignmentId);
           submissionList.value = submissionListData || [];
           
-          // 获取所有用户，然后过滤出学生角色的总数
+          // 获取需要提交的用户总数
           try {
-            const allUsersData = await getAllUsers();
-            if (Array.isArray(allUsersData)) {
-              // 过滤出角色为'student'的用户数量
-              const studentCount = allUsersData.filter(user => user.role === 'student').length;
-              allStudents.value = studentCount;
-              // console.log('AssignmentDetailView - 学生总数:', studentCount);
-            } else {
-              console.error('AssignmentDetailView - 获取用户列表失败，数据格式错误');
-              allStudents.value = 0;
-            }
+            const userCountResponse = await getAssignmentUserCount(assignmentId);
+            allStudents.value = userCountResponse?.userCount || 0;
           } catch (error) {
             console.error('AssignmentDetailView - 获取学生总数失败:', error);
             allStudents.value = 0;
