@@ -366,3 +366,115 @@ exports.getStudentSubmission = async (req, res) => {
     res.status(500).json({ message: '获取学生提交状态失败', error: error.message });
   }
 };
+
+// 下载所有提交的作业
+exports.downloadAllSubmissions = async (req, res) => {
+  try {
+    const assignmentId = req.params.id;
+    
+    // 获取作业信息
+    const assignment = await getOne('SELECT * FROM assignments WHERE id = ?', [assignmentId]);
+    if (!assignment) {
+      return res.status(404).json({ message: '作业不存在' });
+    }
+
+    // 获取所有已提交的记录
+    const submissions = await query(
+      `SELECT s.*, u.name as studentName 
+       FROM submissions s
+       LEFT JOIN users u ON s.studentId = u.studentId
+       WHERE s.assignmentId = ? AND LOWER(s.status) = 'submitted'`,
+      [assignmentId]
+    );
+
+    if (submissions.length === 0) {
+      return res.status(404).json({ message: '暂无提交记录' });
+    }
+
+    // 验证所有文件是否存在
+    const missingFiles = [];
+    const validFiles = [];
+    
+    for (const sub of submissions) {
+      let filePath;
+      // 检查路径是否包含 '/app' 前缀，如果包含则认为是绝对路径（Docker内）
+      // 否则，如果是相对路径，则相对于服务器根目录解析
+      if (path.isAbsolute(sub.filePath)) {
+         filePath = sub.filePath;
+      } else {
+         filePath = path.join(__dirname, '..', sub.filePath);
+      }
+      
+      if (fs.existsSync(filePath)) {
+        validFiles.push({
+          filePath,
+          sub
+        });
+      } else {
+        missingFiles.push({
+          studentId: sub.studentId,
+          studentName: sub.studentName,
+          fileName: sub.fileName
+        });
+      }
+    }
+    
+    // 如果有文件丢失，阻止下载并返回错误信息
+    if (missingFiles.length > 0) {
+      const errorMsg = `验证失败：数据库中有 ${submissions.length} 条记录，但只找到了 ${validFiles.length} 个文件。缺失文件详情：${missingFiles.map(f => `${f.studentName}(${f.studentId})`).join(', ')}`;
+      console.error(errorMsg);
+      return res.status(400).json({ 
+        message: '文件完整性校验失败', 
+        details: errorMsg,
+        missingCount: missingFiles.length,
+        totalCount: submissions.length
+      });
+    }
+
+    const archiver = require('archiver');
+    const archive = archiver('zip', {
+      zlib: { level: 9 } // 最高压缩级别
+    });
+
+    // 设置响应头
+    // 对文件名进行URL编码，防止中文乱码
+    const filename = encodeURIComponent(`${assignment.title}.zip`);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${filename}`);
+
+    // 监听错误
+    archive.on('error', function(err) {
+      console.error('压缩出错:', err);
+      if (!res.headersSent) {
+        res.status(500).send({error: err.message});
+      }
+    });
+
+    // 管道连接到响应
+    archive.pipe(res);
+
+    // 添加文件到压缩包
+    for (const { filePath, sub } of validFiles) {
+      // 使用学号-姓名-文件名格式，处理可能的重复文件名
+      const ext = path.extname(sub.fileName);
+      const baseName = path.basename(sub.fileName, ext);
+      // 如果已经包含了学号和姓名，就不再重复添加
+      let fileNameInZip = sub.fileName;
+      if (!fileNameInZip.includes(sub.studentId)) {
+           fileNameInZip = `${sub.studentId}-${sub.studentName}-${sub.fileName}`;
+      }
+      
+      console.log(`添加文件到压缩包: ${fileNameInZip}`);
+      archive.file(filePath, { name: fileNameInZip });
+    }
+
+    // 完成压缩
+    await archive.finalize();
+
+  } catch (error) {
+    console.error('批量下载失败:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: '批量下载失败', error: error.message });
+    }
+  }
+};

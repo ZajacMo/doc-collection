@@ -61,6 +61,14 @@
         >
           导出名单
         </el-button>
+        <el-button 
+          v-if="userInfo?.role == 'admin'"
+          type="success" 
+          size="large"
+          @click="handleDownloadAll"
+        >
+          下载作业
+        </el-button>
       </div>
     </div>
     
@@ -111,7 +119,8 @@ import {
   updateAssignment, 
   isAssignmentExpired as checkAssignmentExpired,
   getMissingSubmissions,
-  getAssignmentUserCount
+  getAssignmentUserCount,
+  downloadAllSubmissions
 } from '../services/assignmentService';
 import { 
   getSubmissionsByAssignment, 
@@ -370,6 +379,34 @@ export default {
         ElMessage.error('导出失败，请稍后再试');
       }
     };
+
+    // 下载所有提交的作业
+    const handleDownloadAll = async () => {
+      try {
+        const assignmentId = route.params.id;
+        const title = assignment.value?.title || '作业';
+        
+        ElMessage({
+          message: '正在打包下载，请稍候...',
+          type: 'info',
+          duration: 2000
+        });
+        
+        await downloadAllSubmissions(assignmentId, `${title}.zip`);
+        
+        ElMessage.success('下载成功');
+      } catch (error) {
+        console.error('批量下载失败:', error);
+        // 如果是404错误，说明没有提交记录
+        if (error.response && error.response.status === 404) {
+          ElMessage.warning('暂无提交记录，无法下载');
+        } else if (error.response && error.response.status === 400) {
+          ElMessage.error(`文件完整性校验失败：${error.response.data.message || '文件缺失'}`);
+        } else {
+          ElMessage.error('下载失败，请稍后再试');
+        }
+      }
+    };
     
     // 组件挂载时加载数据
     onMounted(() => {
@@ -396,6 +433,7 @@ export default {
       downloadMyFile,
       deleteSubmission,
       exportUnsubmittedList,
+      handleDownloadAll,
       loadData
     };
   }

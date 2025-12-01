@@ -92,6 +92,49 @@ export const getMissingSubmissions = async (id) => {
   }
 };
 
+// 下载所有提交的作业
+export const downloadAllSubmissions = async (id, fileName) => {
+  try {
+    const response = await api.get(`/assignments/${id}/download-all`, {
+      responseType: 'blob'
+    });
+    
+    // response.data 才是真正的 Blob 内容
+    const blob = new Blob([response.data], { type: 'application/zip' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // 如果未提供文件名，尝试从响应头获取
+    if (!fileName) {
+       fileName = `assignment_${id}_submissions.zip`;
+    }
+    
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    return true;
+  } catch (error) {
+    console.error('下载所有提交失败:', error);
+    
+    // 如果是 blob 类型的响应，需要将其转换为 json 以读取错误信息
+    if (error.response && error.response.data instanceof Blob) {
+      const text = await error.response.data.text();
+      try {
+        const jsonError = JSON.parse(text);
+        error.response.data = jsonError;
+      } catch (e) {
+        console.error('无法解析 Blob 错误信息:', e);
+      }
+    }
+    
+    throw error;
+  }
+};
+
 // 检查作业是否已过截止日期
 export const isAssignmentExpired = (deadline) => {
   const now = new Date();

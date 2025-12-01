@@ -27,4 +27,8 @@ router.get('/:id/userCount', assignmentController.getAssignmentUserCount);
 // 获取作业的未提交用户
 router.get('/:id/missing', assignmentController.getMissingSubmissions);
 
+// 下载所有提交的作业
+const submissionController = require('../controllers/submissionController');
+router.get('/:id/download-all', submissionController.downloadAllSubmissions);
+
 module.exports = router;

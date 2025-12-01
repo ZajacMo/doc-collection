@@ -2,6 +2,8 @@ version: '3.8'
 
 services:
   backend:
+    # 使用 image 字段指定镜像名称，避免匿名镜像导致的冲突
+    image: doc-collection-backend:latest
     build:
       context: .
       dockerfile: ./server/Dockerfile
@@ -22,6 +24,8 @@ services:
       - app-network
 
   frontend:
+    # 使用 image 字段指定镜像名称，避免匿名镜像导致的冲突
+    image: doc-collection-frontend:latest
     build:
       context: ./client
     container_name: doc-collection-frontend

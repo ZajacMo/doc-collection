@@ -97,3 +97,4 @@ temp/
 server/db/*.db
 server/uploads/
 .xls
+.gz
