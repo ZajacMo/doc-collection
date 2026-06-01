@@ -40,9 +40,15 @@ const props = defineProps({
 <style scoped>
 .el-dropdown-link {
   cursor: pointer;
-  color: white;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
+  font-weight: 500;
+  gap: 6px;
+}
+
+.el-dropdown-link:hover {
+  color: var(--color-primary);
 }
 
 .el-dropdown-link i {

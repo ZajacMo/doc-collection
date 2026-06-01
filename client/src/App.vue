@@ -110,8 +110,8 @@ onMounted(() => {
 
 #app {
   width: 100%;
-  min-height: calc(100vh - 60px); /* 考虑Header高度 */
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  min-height: calc(100vh - 60px);
+  font-family: var(--el-font-family);
   overflow: hidden;
 }
 
@@ -119,8 +119,8 @@ onMounted(() => {
 body {
   margin: 0;
   font-size: 14px;
-  color: #303133;
-  background-color: #f5f7fa;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
 }
 
 .main-content {
@@ -138,7 +138,7 @@ body {
 router-view {
   flex: 1;
   padding: 20px;
-  min-height: calc(100vh - 60px); /* 考虑Header高度 */
+  min-height: calc(100vh - 60px);
 }
 
 /* 登录页面内容样式 */
@@ -148,26 +148,5 @@ router-view {
   display: flex;
   justify-content: center;
   align-items: center;
-}
-
-
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
 }
 </style>

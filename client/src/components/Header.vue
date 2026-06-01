@@ -27,15 +27,31 @@ const handleLogout = () => {
 <template>
   <el-header class="header">
     <div class="header-content">
-      <div class="header-title">
-        
-        <span>作业收集系统</span>
+      <div class="header-brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="url(#gradient1)"/>
+            <path d="M2 17L12 22L22 17" stroke="url(#gradient2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 12L12 17L22 12" stroke="url(#gradient2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <defs>
+              <linearGradient id="gradient1" x1="2" y1="2" x2="22" y2="12" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#6366f1"/>
+                <stop offset="1" stop-color="#8b5cf6"/>
+              </linearGradient>
+              <linearGradient id="gradient2" x1="2" y1="12" x2="22" y2="17" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#6366f1"/>
+                <stop offset="1" stop-color="#8b5cf6"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <span class="brand-title">作业收集系统</span>
       </div>
       <div class="header-user">
-        <UserDropdown 
-          :user-info="userInfo" 
-          :on-go-to-profile="handleGoToProfile" 
-          :on-logout="handleLogout" 
+        <UserDropdown
+          :user-info="userInfo"
+          :on-go-to-profile="handleGoToProfile"
+          :on-logout="handleLogout"
         />
       </div>
     </div>
@@ -44,10 +60,14 @@ const handleLogout = () => {
 
 <style scoped>
 .header {
-  background-color: #1890ff;
-  color: white;
+  background-color: var(--bg-header);
+  color: var(--text-primary);
   height: 60px;
   flex-shrink: 0;
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  z-index: 100;
 }
 
 .header-content {
@@ -55,18 +75,36 @@ const handleLogout = () => {
   justify-content: space-between;
   align-items: center;
   height: 100%;
-  padding: 0 20px;
+  padding: 0 24px;
 }
 
-.header-title {
+.header-brand {
   display: flex;
   align-items: center;
-  font-size: 20px;
-  font-weight: bold;
+  gap: 12px;
 }
 
-.header-title i {
-  margin-right: 10px;
+.brand-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.brand-title {
+  font-size: 18px;
+  font-weight: 700;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
 }
 
 .header-user {
