@@ -26,8 +26,11 @@ const createStorage = (baseDestinationPath) => {
           return cb(new Error('缺少必需的作业名称参数'), null);
         }
         
-        // 清理作业名称中的非法字符
-        const safeAssignmentName = assignmentName.replace(/[\\/:*?"<>|]/g, '_');
+        // 清理作业名称中的非法字符，并阻止路径遍历（过滤 . 和 ..）
+        let safeAssignmentName = assignmentName.replace(/[\\/:*?"<>|]/g, '_').trim();
+        if (safeAssignmentName === '.' || safeAssignmentName === '..') {
+          safeAssignmentName = '_';
+        }
         
         // 构建完整路径：基础路径/作业名称
         const fullPath = path.join(__dirname, '..', baseDestinationPath, safeAssignmentName);
@@ -49,9 +52,9 @@ const createStorage = (baseDestinationPath) => {
       // 获取文件扩展名
       const fileExtension = path.extname(file.originalname);
       
-      // 重命名文件为"姓名-学号"格式，添加扩展名
-      const newFileName = `${studentName}-${studentId}${fileExtension}`;
-      
+      // 重命名文件为"姓名-学号-时间戳"格式，添加扩展名，避免覆盖
+      const newFileName = `${studentName}-${studentId}-${Date.now()}${fileExtension}`;
+
       cb(null, newFileName);
     }
   });
@@ -102,7 +105,7 @@ router.post('/', regularUpload.single('file'), async (req, res) => {
     res.json({
       id: Date.now().toString(),
       fileName: renamedFileName,
-      filePath: req.file.path.replace(__dirname, '').replace(/^\\/, ''),
+      filePath: path.relative(path.join(__dirname, '..'), req.file.path),
       fileSize: req.file.size
     });
   } catch (error) {

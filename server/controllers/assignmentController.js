@@ -3,6 +3,9 @@ const path = require('path');
 const schedule = require('node-schedule');
 const { getDb } = require('../db/db');
 
+// 事务辅助函数：将 db.run 包装为 Promise
+const tx = (sql) => new Promise((resolve, reject) => getDb().run(sql, (err) => err ? reject(err) : resolve()));
+
 /**
  * 执行SQL查询
  * @param {string} sql - SQL语句
@@ -202,8 +205,7 @@ exports.createAssignment = async (req, res) => {
     
     // 生成未提交记录（Unsubmitted）
     try {
-      const db = getDb();
-      db.run('BEGIN TRANSACTION');
+      await tx('BEGIN TRANSACTION');
       let targetStudentIds = [];
       if (Array.isArray(relativeStudents) && relativeStudents.length > 0) {
         targetStudentIds = relativeStudents;
@@ -231,9 +233,9 @@ exports.createAssignment = async (req, res) => {
           ]
         );
       }
-      db.run('COMMIT');
+      await tx('COMMIT');
     } catch (e) {
-      try { getDb().run('ROLLBACK'); } catch {}
+      try { await tx('ROLLBACK'); } catch {}
       // 不阻断创建作业流程，仅记录错误
       console.error('生成未提交记录失败:', e);
     }
@@ -306,8 +308,7 @@ exports.updateAssignment = async (req, res) => {
 
       // 生成缺失的 Unsubmitted 提交记录（不影响主更新返回）
       try {
-        const db = getDb();
-        db.run('BEGIN TRANSACTION');
+        await tx('BEGIN TRANSACTION');
         // 计算目标学生集合
         if (!Array.isArray(targetStudents) || targetStudents.length === 0) {
           const students = await query('SELECT studentId FROM users WHERE role = ?', ['student']);
@@ -337,9 +338,9 @@ exports.updateAssignment = async (req, res) => {
             );
           }
         }
-        db.run('COMMIT');
+        await tx('COMMIT');
       } catch (e) {
-        try { getDb().run('ROLLBACK'); } catch {}
+        try { await tx('ROLLBACK'); } catch {}
         // 仅记录错误，不影响主响应
         console.error('更新作业后生成未提交记录失败:', e);
       }
@@ -356,19 +357,18 @@ exports.updateAssignment = async (req, res) => {
 exports.deleteAssignment = async (req, res) => {
   try {
     // 开启事务
-    const db = getDb();
-    db.run('BEGIN TRANSACTION');
-    
+    await tx('BEGIN TRANSACTION');
+
     try {
       // 先删除相关的提交记录
       await run('DELETE FROM submissions WHERE assignmentId = ?', [req.params.id]);
-      
+
       // 再删除作业
       const result = await run('DELETE FROM assignments WHERE id = ?', [req.params.id]);
-      
+
       // 提交事务
-      db.run('COMMIT');
-      
+      await tx('COMMIT');
+
       if (result.changes > 0) {
         res.json({ message: '作业已删除' });
       } else {
@@ -376,7 +376,7 @@ exports.deleteAssignment = async (req, res) => {
       }
     } catch (error) {
       // 回滚事务
-      db.run('ROLLBACK');
+      try { await tx('ROLLBACK'); } catch {}
       throw error;
     }
   } catch (error) {
@@ -418,67 +418,50 @@ exports.getAssignmentSubmissions = async (req, res) => {
 exports.getSubmissionStatus = async (req, res) => {
   try {
     const assignmentId = req.params.id;
-    
+
     // 检查作业是否存在
     const assignment = await getOne('SELECT * FROM assignments WHERE id = ?', [assignmentId]);
     if (!assignment) {
       return res.status(404).json({ message: '作业不存在' });
     }
-    
-    // 获取已提交的学生
+
+    // 获取已提交的学生（使用 JOIN 获取姓名）
     const submittedStudents = await query(
-      `SELECT s.studentId, s.studentName, s.submitTime, s.fileInfo 
-       FROM submissions s 
-       WHERE s.assignmentId = ? 
+      `SELECT s.studentId, u.name as studentName, s.submitTime
+       FROM submissions s
+       LEFT JOIN users u ON s.studentId = u.studentId
+       WHERE s.assignmentId = ? AND s.status = 'submitted'
        ORDER BY s.submitTime DESC`,
       [assignmentId]
     );
-    
+
     // 获取所有学生（排除管理员）
     const students = await query(
-      'SELECT id, name FROM users WHERE role = ?',
+      'SELECT studentId, name FROM users WHERE role = ?',
       ['student']
     );
-    
+
     // 计算已提交和未提交人数
     const totalStudents = students.length;
     const submittedCount = submittedStudents.length;
     const unsubmittedCount = totalStudents - submittedCount;
-    
-    // 获取未提交的学生
-    if (submittedCount > 0) {
-      const submittedStudentIds = submittedStudents.map(s => s.studentId);
-      const unsubmittedStudents = students
-        .filter(s => !submittedStudentIds.includes(s.id))
-        .map(s => ({
-          studentId: s.id,
-          studentName: s.name
-        }));
-      
-      res.json({
-        assignmentId,
-        totalStudents,
-        submittedCount,
-        unsubmittedCount,
-        submittedStudents,
-        unsubmittedStudents
-      });
-    } else {
-      // 如果没有已提交的，则所有学生都是未提交的
-      const unsubmittedStudents = students.map(s => ({
-        studentId: s.id,
+
+    const submittedStudentIds = new Set(submittedStudents.map(s => s.studentId));
+    const unsubmittedStudents = students
+      .filter(s => !submittedStudentIds.has(s.studentId))
+      .map(s => ({
+        studentId: s.studentId,
         studentName: s.name
       }));
-      
-      res.json({
-        assignmentId,
-        totalStudents,
-        submittedCount,
-        unsubmittedCount,
-        submittedStudents: [],
-        unsubmittedStudents
-      });
-    }
+
+    res.json({
+      assignmentId,
+      totalStudents,
+      submittedCount,
+      unsubmittedCount,
+      submittedStudents,
+      unsubmittedStudents
+    });
   } catch (error) {
     res.status(500).json({ message: '获取提交情况失败', error: error.message });
   }

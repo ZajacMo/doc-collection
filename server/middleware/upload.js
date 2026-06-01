@@ -10,16 +10,23 @@ const storage = multer.diskStorage({
       // 从请求体中获取作业名称
       const { assignmentName } = req.body;
       
-      // 获取基础上传目录，支持环境变量配置或使用默认值
-      let baseUploadPath = process.env.UPLOAD_DIR || './server/uploads';
-      
+      // 获取基础上传目录，支持环境变量配置或使用默认值（与 index.js 保持一致，相对于 server 目录）
+      let baseUploadPath = process.env.UPLOAD_DIR || 'uploads';
+      // 统一解析为绝对路径，避免相对路径基准不一致
+      if (!path.isAbsolute(baseUploadPath)) {
+        baseUploadPath = path.join(__dirname, '..', baseUploadPath);
+      }
+
       // 验证作业名称参数的有效性 - 必须提供作业名称
       if (!assignmentName || typeof assignmentName !== 'string' || assignmentName.trim() === '') {
         return cb(new Error('缺少必需的作业名称参数'), null);
       }
       
-      // 清理作业名称中的非法字符，确保可以作为文件夹名
-      const safeAssignmentName = assignmentName.replace(/[\\/:*?"<>|]/g, '_');
+      // 清理作业名称中的非法字符，并阻止路径遍历（过滤 . 和 ..）
+      let safeAssignmentName = assignmentName.replace(/[\\/:*?"<>|]/g, '_').trim();
+      if (safeAssignmentName === '.' || safeAssignmentName === '..') {
+        safeAssignmentName = '_';
+      }
       
       // 构建完整的上传路径：基础路径/作业名称
       // 确保文件始终上传到作业名称子目录中，而不是直接在uploads根目录下

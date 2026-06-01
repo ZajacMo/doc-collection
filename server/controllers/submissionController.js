@@ -3,6 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const { getDb } = require('../db/db');
 
+// 事务辅助函数：将 db.run 包装为 Promise
+const tx = (sql) => new Promise((resolve, reject) => getDb().run(sql, (err) => err ? reject(err) : resolve()));
+
 // 数据库操作辅助函数
 // 执行查询并返回所有结果
 const query = (sql, params = []) => {
@@ -139,21 +142,31 @@ exports.getSubmissionsByUser = async (req, res) => {
 exports.createSubmission = async (req, res) => {
   try {
     console.log('提交请求体:', req.body);
-    
+
     // 尝试从不同位置获取参数
     const assignmentId = req.body?.assignmentId || req.fields?.assignmentId;
     const studentId = req.body?.studentId || req.fields?.studentId;
     const studentName = req.body?.studentName || req.fields?.studentName;
-    const fileId = req.body?.fileId || req.fields?.fileId; // 支持上传的文件ID
-    const fileName = req.body?.fileName || req.fields?.fileName;
-    const filePath = req.body?.filePath || req.fields?.filePath;
-    const fileSize = req.body?.fileSize || req.fields?.fileSize;
-    
-    console.log('解析后的数据:', { 
-      assignmentId, 
-      studentId, 
+
+    // 支持直接文件上传（multipart 一步提交）或两步提交（body 中的文件信息）
+    let fileName, filePath, fileSize;
+    if (req.file) {
+      // 一步提交：文件由 multer 直接处理
+      fileName = req.file.filename;
+      filePath = path.relative(path.join(__dirname, '..'), req.file.path);
+      fileSize = req.file.size;
+      console.log('直接从 multipart 获取文件:', { fileName, filePath, fileSize });
+    } else {
+      // 两步提交：文件信息在 body 中
+      fileName = req.body?.fileName || req.fields?.fileName;
+      filePath = req.body?.filePath || req.fields?.filePath;
+      fileSize = req.body?.fileSize || req.fields?.fileSize;
+    }
+
+    console.log('解析后的数据:', {
+      assignmentId,
+      studentId,
       studentName,
-      fileId,
       fileName,
       filePath,
       fileSize
@@ -175,8 +188,11 @@ exports.createSubmission = async (req, res) => {
     } catch (error) {
       console.error('学生查询数据库错误:', error);
     }
-    
-   
+
+    if (!studentExists) {
+      return res.status(404).json({ message: '学生不存在' });
+    }
+
     // 检查作业是否存在
     const assignment = await getOne('SELECT id, title, deadline, fileTypes FROM assignments WHERE id = ?', [assignmentId]);
     if (!assignment) {
@@ -224,7 +240,7 @@ exports.createSubmission = async (req, res) => {
       console.log('文件类型对比:', { extOld, extNew });
 
       try {
-        db.run('BEGIN TRANSACTION');
+        await tx('BEGIN TRANSACTION');
         await run(
           'UPDATE submissions SET fileName = ?, filePath = ?, fileSize = ?, submitTime = ?, status = ? WHERE id = ?',
           [
@@ -244,7 +260,7 @@ exports.createSubmission = async (req, res) => {
             const absoluteOldPath = path.isAbsolute(oldPath) ? oldPath : path.join(__dirname, '..', oldPath);
             fs.unlinkSync(absoluteOldPath);
           } catch (e) {
-            db.run('ROLLBACK');
+            try { await tx('ROLLBACK'); } catch {}
             try {
               const absoluteNewPath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '..', filePath);
               fs.unlinkSync(absoluteNewPath);
@@ -253,11 +269,11 @@ exports.createSubmission = async (req, res) => {
           }
         }
 
-        db.run('COMMIT');
+        await tx('COMMIT');
         const updatedSubmission = await getOne('SELECT * FROM submissions WHERE id = ?', [existingSubmission.id]);
         return res.json(updatedSubmission);
       } catch (e) {
-        try { db.run('ROLLBACK'); } catch {}
+        try { await tx('ROLLBACK'); } catch {}
         return res.status(500).json({ message: '提交更新失败' });
       }
     } else {
@@ -291,27 +307,78 @@ exports.createSubmission = async (req, res) => {
 };
 
 // 更新提交
-exports.updateSubmission = (req, res) => {
-  const index = submissions.findIndex(s => s.id === req.params.id);
-  if (index !== -1) {
-    submissions[index] = {
-      ...submissions[index],
-      ...req.body,
-      updateTime: new Date().toISOString()
-    };
-    saveData();
-    res.json(submissions[index]);
-  } else {
-    res.status(404).json({ message: '提交不存在' });
+exports.updateSubmission = async (req, res) => {
+  try {
+    const { fileName, filePath, fileSize, status } = req.body;
+
+    // 构建更新字段
+    const updates = [];
+    const params = [];
+
+    if (fileName !== undefined) {
+      updates.push('fileName = ?');
+      params.push(fileName);
+    }
+    if (filePath !== undefined) {
+      updates.push('filePath = ?');
+      params.push(filePath);
+    }
+    if (fileSize !== undefined) {
+      updates.push('fileSize = ?');
+      params.push(fileSize);
+    }
+    if (status !== undefined) {
+      updates.push('status = ?');
+      params.push(status);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ message: '没有要更新的字段' });
+    }
+
+    params.push(req.params.id);
+
+    const result = await run(
+      `UPDATE submissions SET ${updates.join(', ')} WHERE id = ?`,
+      params
+    );
+
+    if (result.changes > 0) {
+      const updatedSubmission = await getOne('SELECT * FROM submissions WHERE id = ?', [req.params.id]);
+      res.json(updatedSubmission);
+    } else {
+      res.status(404).json({ message: '提交不存在' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: '更新提交失败', error: error.message });
   }
 };
 
 // 删除提交
 exports.deleteSubmission = async (req, res) => {
   try {
+    // 先查询获取文件路径
+    const submission = await getOne('SELECT filePath FROM submissions WHERE id = ?', [req.params.id]);
+    if (!submission) {
+      return res.status(404).json({ message: '提交不存在' });
+    }
+
+    // 删除关联文件（如果存在）
+    if (submission.filePath) {
+      const absolutePath = path.isAbsolute(submission.filePath)
+        ? submission.filePath
+        : path.join(__dirname, '..', submission.filePath);
+      try {
+        fs.unlinkSync(absolutePath);
+      } catch (e) {
+        // 文件不存在或删除失败，仅记录日志，继续删除数据库记录
+        console.error('删除文件失败:', e.message);
+      }
+    }
+
     // 从数据库中删除记录
     const result = await run('DELETE FROM submissions WHERE id = ?', [req.params.id]);
-    
+
     if (result.changes > 0) {
       res.json({ message: '提交已删除' });
     } else {
@@ -349,12 +416,24 @@ exports.getStudentSubmission = async (req, res) => {
     const deadline = new Date(assignment.deadline);
     const now = new Date();
     const isExpired = now > deadline;
-    const isUrgent = isExpired && (now - deadline) <= 24 * 60 * 60 * 1000; // 24小时内逾期
+    const hoursToDeadline = (deadline - now) / (60 * 60 * 1000);
+    const isUrgent = !isExpired && hoursToDeadline > 0 && hoursToDeadline <= 24; // 截止前24小时内
     const submission = await getOne(
       'SELECT id, fileName, fileSize, submitTime FROM submissions WHERE studentId = ? AND assignmentId = ? AND status = "submitted"',
       [studentId, assignmentId]
     );
-    let status = submission ? (isExpired ? "expired" : "submitted") : (isExpired ? "late" : isUrgent ? "urgent" : "in_progress");
+    let status;
+    if (submission) {
+      status = isExpired ? 'expired' : 'submitted';
+    } else {
+      if (isExpired) {
+        status = 'late';
+      } else if (isUrgent) {
+        status = 'urgent';
+      } else {
+        status = 'in_progress';
+      }
+    }
     res.json({
       studentId,
       assignmentId,
@@ -446,8 +525,9 @@ exports.downloadAllSubmissions = async (req, res) => {
     archive.on('error', function(err) {
       console.error('压缩出错:', err);
       if (!res.headersSent) {
-        res.status(500).send({error: err.message});
+        res.status(500).json({ message: '压缩失败', error: err.message });
       }
+      archive.destroy();
     });
 
     // 管道连接到响应
