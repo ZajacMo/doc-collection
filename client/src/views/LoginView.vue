@@ -1,44 +1,78 @@
 <template>
   <div class="login-container">
+    <!-- 背景装饰 -->
+    <div class="bg-decoration">
+      <div class="bg-circle bg-circle-1"></div>
+      <div class="bg-circle bg-circle-2"></div>
+      <div class="bg-circle bg-circle-3"></div>
+    </div>
+
     <div class="login-form-wrapper">
-      <h2>作业收集系统 - 登录</h2>
+      <!-- Logo 区域 -->
+      <div class="login-brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="url(#loginGradient1)"/>
+            <path d="M2 17L12 22L22 17" stroke="url(#loginGradient2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 12L12 17L22 12" stroke="url(#loginGradient2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <defs>
+              <linearGradient id="loginGradient1" x1="2" y1="2" x2="22" y2="12" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#6366f1"/>
+                <stop offset="1" stop-color="#8b5cf6"/>
+              </linearGradient>
+              <linearGradient id="loginGradient2" x1="2" y1="12" x2="22" y2="17" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#6366f1"/>
+                <stop offset="1" stop-color="#8b5cf6"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h2 class="brand-title">作业收集系统</h2>
+        <p class="brand-subtitle">登录您的账号</p>
+      </div>
+
       <el-form
         ref="loginFormRef"
         :model="loginForm"
         :rules="loginRules"
-        label-width="80px"
+        label-width="0"
         class="login-form"
         @submit.prevent
       >
-        <el-form-item label="学号" prop="studentId">
+        <el-form-item prop="studentId">
           <el-input
             v-model="loginForm.studentId"
             placeholder="请输入学号"
-
+            size="large"
+            :prefix-icon="User"
           />
         </el-form-item>
-        <el-form-item label="密码" prop="password">
+        <el-form-item prop="password">
           <el-input
             v-model="loginForm.password"
             type="password"
             placeholder="请输入密码"
-
+            size="large"
+            :prefix-icon="Lock"
+            show-password
+            @keyup.enter="handleLogin"
           />
         </el-form-item>
         <el-form-item>
           <el-button
             type="primary"
+            size="large"
             @click="handleLogin"
             :loading="loading"
-            style="width: 100%"
+            class="login-button"
           >
             {{ loading ? '登录中...' : '登录' }}
           </el-button>
         </el-form-item>
       </el-form>
-      <div class="login-tips">
-        <p>提示：默认密码为 123456</p>
-        <p>管理员账号：admin</p>
+
+      <div class="login-footer">
+        <p class="footer-hint">默认账号：admin / 学号</p>
       </div>
     </div>
   </div>
@@ -48,6 +82,7 @@
 import { ref, inject } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { User, Lock } from '@element-plus/icons-vue';
 import { loginUser, getCurrentUser } from '../services/userService';
 
 const loginFormRef = ref(null);
@@ -81,10 +116,8 @@ const handleLogin = async () => {
 
     // 调用登录接口
     const result = await loginUser(loginForm.value.studentId, loginForm.value.password);
-    // console.log(result);
 
     ElMessage.success('登录成功');
-    // console.log(result);
 
     // 获取并更新用户状态
     const userInfo = await getCurrentUser();
@@ -93,7 +126,6 @@ const handleLogin = async () => {
     }
 
     // 根据用户角色跳转到不同页面
-    // 角色信息在result.user对象中
     if (result.user && result.user.role === 'admin') {
       router.push('/admin');
     } else {
@@ -112,48 +144,140 @@ const handleLogin = async () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  background-color: #f5f7fa;
+  min-height: 100vh;
+  background: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+}
+
+/* 背景装饰 */
+.bg-decoration {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bg-circle {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.4;
+}
+
+.bg-circle-1 {
+  width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  top: -100px;
+  right: -100px;
+}
+
+.bg-circle-2 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, #06b6d4, #6366f1);
+  bottom: -50px;
+  left: -50px;
+  opacity: 0.25;
+}
+
+.bg-circle-3 {
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  top: 40%;
+  left: 30%;
+  opacity: 0.15;
 }
 
 .login-form-wrapper {
-  background: white;
-  padding: 40px;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  width: 90%;
-  max-width: 400px;
+  background: var(--bg-card);
+  padding: 48px 40px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+  border: 1px solid var(--border-color);
 }
 
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .login-form-wrapper {
-    padding: 30px 20px;
-  }
-
-  .login-form-wrapper h2 {
-    font-size: 18px;
-    margin-bottom: 20px;
-  }
-}
-
-.login-form-wrapper h2 {
+/* 品牌区域 */
+.login-brand {
   text-align: center;
-  margin-bottom: 30px;
-  color: #303133;
+  margin-bottom: 32px;
 }
 
-.login-form {
-  margin-bottom: 20px;
+.brand-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
 }
 
-.login-tips {
+.brand-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.brand-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+}
+
+.brand-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* 表单样式 */
+.login-form :deep(.el-input__wrapper) {
+  border-radius: var(--radius-sm);
+  padding: 4px 16px;
+}
+
+.login-form :deep(.el-input__inner) {
+  height: 44px;
+  font-size: 15px;
+}
+
+.login-button {
+  width: 100%;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  margin-top: 8px;
+}
+
+/* 底部提示 */
+.login-footer {
+  margin-top: 24px;
   text-align: center;
-  color: #909399;
+}
+
+.footer-hint {
   font-size: 12px;
+  color: var(--text-tertiary);
+  margin: 0;
 }
 
-.login-tips p {
-  margin: 5px 0;
+/* 响应式 */
+@media (max-width: 480px) {
+  .login-form-wrapper {
+    padding: 32px 24px;
+  }
+
+  .brand-title {
+    font-size: 20px;
+  }
 }
 </style>
