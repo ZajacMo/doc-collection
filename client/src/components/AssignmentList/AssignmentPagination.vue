@@ -53,9 +53,9 @@ const handleCurrentChange = (current) => {
 
 <style scoped>
 .pagination-section {
-  background-color: white;
+  background-color: var(--bg-card);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   display: flex;
   justify-content: flex-end;
 }

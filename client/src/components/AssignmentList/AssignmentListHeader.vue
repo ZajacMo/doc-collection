@@ -36,7 +36,7 @@ const onCreateClick = () => {
 }
 
 .page-header h2 {
-  color: #303133;
+  color: var(--text-primary);
   margin: 0;
 }
 

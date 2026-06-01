@@ -71,9 +71,9 @@ const handleSearch = () => {
 
 <style scoped>
 .filter-section {
-  background-color: white;
+  background-color: var(--bg-card);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 20px;
 }
 

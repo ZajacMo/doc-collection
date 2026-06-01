@@ -125,9 +125,9 @@ const onDeleteClick = (id, title) => {
 
 <style scoped>
 .table-section {
-  background-color: white;
+  background-color: var(--bg-card);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 20px;
 }
 
@@ -139,16 +139,16 @@ const onDeleteClick = (id, title) => {
 }
 
 .text-danger {
-  color: #f56c6c;
+  color: var(--color-danger);
 }
 
 .text-warning {
-  color: #e6a23c;
+  color: var(--color-warning);
 }
 
 .assignment-title-link {
   cursor: pointer;
-  color: #1890ff;
+  color: var(--color-primary);
 }
 
 .assignment-title-link:hover {
