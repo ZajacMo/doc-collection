@@ -10,6 +10,9 @@
         <el-dropdown-item @click="onGoToProfile">
           个人中心
         </el-dropdown-item>
+        <el-dropdown-item @click="onChangePassword">
+          修改密码
+        </el-dropdown-item>
         <el-dropdown-item @click="onLogout">
             退出登录
         </el-dropdown-item>
@@ -31,6 +34,10 @@ const props = defineProps({
     required: true
   },
   onLogout: {
+    type: Function,
+    required: true
+  },
+  onChangePassword: {
     type: Function,
     required: true
   }

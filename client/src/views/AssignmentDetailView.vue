@@ -42,31 +42,39 @@
       <!-- 作业状态通知提示 - 根据assignmentStatus动态显示 -->
       <NoticeCard :assignment-status="assignmentStatus"/>
 
-      <!-- 操作按钮 - 仅保留管理员操作 -->
+      <!-- 操作按钮 -->
       <div class="action-buttons">
-        <el-button 
+        <el-button
           v-if="userInfo?.role == 'admin'"
-          type="warning" 
+          type="warning"
           size="large"
           @click="showUpdateDialog"
         >
           编辑作业
         </el-button>
-        <el-button 
+        <el-button
           v-if="userInfo?.role == 'admin'"
-          type="primary" 
+          type="primary"
           size="large"
           @click="exportUnsubmittedList"
         >
           导出名单
         </el-button>
-        <el-button 
+        <el-button
           v-if="userInfo?.role == 'admin'"
-          type="success" 
+          type="success"
           size="large"
           @click="handleDownloadAll"
         >
           下载作业
+        </el-button>
+        <el-button
+          v-if="userInfo?.role !== 'admin' && submissionInfo?.submissionInfo?.id"
+          type="success"
+          size="large"
+          @click="downloadMyFile"
+        >
+          下载我的作业
         </el-button>
       </div>
     </div>
@@ -267,7 +275,16 @@ const handleUpdateAssignment = async (formData) => {
 // 下载文件
 const downloadFile = async (fileId, fileName) => {
   try {
-    await downloadFileAPI(fileId, fileName);
+    const response = await downloadFileAPI(fileId);
+    const blob = new Blob([response.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName || 'download');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   } catch (error) {
     ElMessage.error('文件下载失败');
     console.error('文件下载失败:', error);
@@ -276,8 +293,11 @@ const downloadFile = async (fileId, fileName) => {
 
 // 下载我的文件
 const downloadMyFile = () => {
-  if (submissionInfo.value) {
-    downloadFile(submissionInfo.value.fileId, submissionInfo.value.fileName);
+  const sub = submissionInfo.value?.submissionInfo;
+  if (sub?.id && sub?.fileName) {
+    downloadFile(sub.id, sub.fileName);
+  } else {
+    ElMessage.warning('暂无已提交的作业文件');
   }
 };
 

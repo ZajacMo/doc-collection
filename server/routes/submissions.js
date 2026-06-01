@@ -26,6 +26,7 @@ router.delete('/:id', requireAdmin, submissionController.deleteSubmission);
 // 获取学生的作业提交状态（需要登录）
 router.get('/status/:studentId/:assignmentId', requireAuth, submissionController.getStudentSubmission);
 
-// 下载提交的文件路由已移除，文件下载由uploadController处理
+// 下载单个提交的文件
+router.get('/:id/download', submissionController.downloadSubmissionFile);
 
 module.exports = router;

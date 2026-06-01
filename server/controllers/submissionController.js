@@ -396,22 +396,22 @@ exports.deleteSubmission = async (req, res) => {
 exports.getStudentSubmission = async (req, res) => {
   try {
     const { studentId, assignmentId } = req.params;
-    
+
     // 检查参数
     if (!studentId || !assignmentId) {
       return res.status(400).json({ message: '缺少必要参数：studentId和assignmentId' });
     }
-    
+
     // 获取作业信息
     const assignment = await getOne(
       'SELECT id, title, deadline FROM assignments WHERE id = ? ',
       [assignmentId]
     );
-    
+
     if (!assignment) {
       return res.status(404).json({ message: '作业不存在' });
     }
-    
+
     // 检查作业截止时间
     const deadline = new Date(assignment.deadline);
     const now = new Date();
@@ -419,7 +419,7 @@ exports.getStudentSubmission = async (req, res) => {
     const hoursToDeadline = (deadline - now) / (60 * 60 * 1000);
     const isUrgent = !isExpired && hoursToDeadline > 0 && hoursToDeadline <= 24; // 截止前24小时内
     const submission = await getOne(
-      'SELECT id, fileName, fileSize, submitTime FROM submissions WHERE studentId = ? AND assignmentId = ? AND status = "submitted"',
+      'SELECT id, fileName, filePath, fileSize, submitTime FROM submissions WHERE studentId = ? AND assignmentId = ? AND status = "submitted"',
       [studentId, assignmentId]
     );
     let status;
@@ -443,6 +443,61 @@ exports.getStudentSubmission = async (req, res) => {
   } catch (error) {
     console.error('获取学生提交状态失败:', error);
     res.status(500).json({ message: '获取学生提交状态失败', error: error.message });
+  }
+};
+
+// 下载单个提交的文件
+exports.downloadSubmissionFile = async (req, res) => {
+  try {
+    const submissionId = req.params.id;
+
+    // 获取提交记录
+    const submission = await getOne(
+      'SELECT fileName, filePath FROM submissions WHERE id = ?',
+      [submissionId]
+    );
+
+    if (!submission) {
+      return res.status(404).json({ message: '提交记录不存在' });
+    }
+
+    if (!submission.filePath) {
+      return res.status(404).json({ message: '文件路径不存在' });
+    }
+
+    // 解析文件路径
+    let filePath;
+    if (path.isAbsolute(submission.filePath)) {
+      filePath = submission.filePath;
+    } else {
+      filePath = path.join(__dirname, '..', submission.filePath);
+    }
+
+    // 检查文件是否存在
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: '文件不存在' });
+    }
+
+    // 设置响应头，支持中文文件名
+    const encodedFileName = encodeURIComponent(submission.fileName);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFileName}`);
+
+    // 发送文件
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
+    fileStream.on('error', (err) => {
+      console.error('文件读取错误:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ message: '文件读取失败' });
+      }
+    });
+  } catch (error) {
+    console.error('下载提交文件失败:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: '下载文件失败', error: error.message });
+    }
   }
 };
 

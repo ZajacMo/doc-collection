@@ -145,13 +145,38 @@ export const isAdmin = () => {
   return user ? user.role === 'admin' : false;
 };
 
-// 导入用户（从Excel文件）
-export const importUsers = async (fileData) => {
+// 批量导入用户
+export const importUsersBatch = async (users) => {
   try {
-    const response = await api.post('/users/import', fileData);
+    const response = await api.post('/users/batch', { users });
     return response;
   } catch (error) {
-    console.error('导入用户失败:', error);
+    console.error('批量导入用户失败:', error);
+    throw error;
+  }
+};
+
+// 修改密码
+export const changePassword = async (id, oldPassword, newPassword) => {
+  try {
+    const response = await api.post(`/users/${id}/change-password`, {
+      oldPassword,
+      newPassword
+    });
+    return response;
+  } catch (error) {
+    console.error('修改密码失败:', error);
+    throw error;
+  }
+};
+
+// 重置密码（管理员）
+export const resetPassword = async (id) => {
+  try {
+    const response = await api.post(`/users/${id}/reset-password`);
+    return response;
+  } catch (error) {
+    console.error('重置密码失败:', error);
     throw error;
   }
 };

@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 // 数据库连接模块
-const { initDatabase, closeDb } = require('./db/db');
+const { initDatabase, closeDb, ensureSchema } = require(process.env.DB_PATH || './db/db');
 
 // 创建Express应用
 const app = express();
@@ -51,6 +51,10 @@ async function startServer() {
     // 初始化数据库
     await initDatabase();
     console.log('数据库初始化完成');
+
+    // 确保数据库 schema 是最新的
+    await ensureSchema();
+    console.log('数据库 schema 检查完成');
     
     // 鉴权中间件：验证 JWT 并注入 req.user
     const jwt = require('jsonwebtoken');

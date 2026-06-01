@@ -27,6 +27,7 @@
           @show-add-dialog="addUserDialogVisible = true"
           @edit-user="editUser"
           @delete-user="deleteUser"
+          @reset-password="resetPassword"
         />
       </el-tab-pane>
 
@@ -64,12 +65,10 @@
 </template>
 
 <script setup>
-import { User, SwitchButton } from '@element-plus/icons-vue';
-import UserDropdown from '../components/UserDropdown.vue';
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { getCurrentUser, logoutUser, getAllUsers, deleteUser as deleteUserAPI } from '../services/userService';
+import { getAllUsers, deleteUser as deleteUserAPI, resetPassword as resetPasswordAPI } from '../services/userService';
 import { getAllAssignments, deleteAssignment as deleteAssignmentAPI } from '../services/assignmentService';
 import { getAllSubmissions, deleteSubmission as deleteSubmissionAPI, downloadFile, handleFileDownload } from '../services/submissionService';
 
@@ -80,13 +79,7 @@ import AssignmentManagement from '../components/admin/AssignmentManagement.vue';
 import SubmissionManagement from '../components/admin/SubmissionManagement.vue';
 import DialogComponents from '../components/admin/DialogComponents.vue';
 
-/**
- * 管理中心主视图组件
- * 负责整合各个子管理模块，处理数据加载和全局状态管理
- */
-
 const router = useRouter();
-const userInfo = ref(getCurrentUser());
 const activeTab = ref('overview');
 const allUsers = ref([]);
 const allAssignments = ref([]);
@@ -108,44 +101,6 @@ const pendingAssignments = computed(() => {
   const now = new Date();
   return allAssignments.value.filter(a => new Date(a.deadline) > now).length;
 });
-
-// 加载数据
-const loadData = async () => {
-  try {
-    // 获取所有用户
-    const usersData = await getAllUsers();
-    allUsers.value = Array.isArray(usersData) ? usersData : [];
-
-    // 获取所有作业
-    const assignmentsData = await getAllAssignments();
-    allAssignments.value = Array.isArray(assignmentsData) ? assignmentsData : [];
-
-    // 获取所有提交并添加作业标题
-    const submissionsData = await getAllSubmissions();
-    if (Array.isArray(submissionsData)) {
-      allSubmissions.value = submissionsData.map(submission => {
-        const assignment = allAssignments.value.find(a => a.id === submission.assignmentId);
-        return {
-          ...submission,
-          assignmentTitle: assignment?.title || '未知作业'
-        };
-      });
-    } else {
-      allSubmissions.value = [];
-    }
-
-    // 生成近期活动数据
-    generateRecentActivities();
-
-  } catch (error) {
-    ElMessage.error('加载数据失败');
-    console.error('加载数据失败:', error);
-    // 确保数据始终是数组，防止表格渲染错误
-    allUsers.value = [];
-    allAssignments.value = [];
-    allSubmissions.value = [];
-  }
-};
 
 // 生成近期活动数据
 const generateRecentActivities = () => {
@@ -192,19 +147,41 @@ const generateRecentActivities = () => {
     .slice(0, 15);
 };
 
-// 退出登录
-const handleLogout = async () => {
+// 加载数据
+const loadData = async () => {
   try {
-    await logoutUser();
-    router.push('/login');
-  } catch (error) {
-    ElMessage.error('退出登录失败');
-  }
-};
+    // 获取所有用户
+    const usersData = await getAllUsers();
+    allUsers.value = Array.isArray(usersData) ? usersData : [];
 
-// 跳转到个人中心
-const goToProfile = () => {
-  router.push('/profile');
+    // 获取所有作业
+    const assignmentsData = await getAllAssignments();
+    allAssignments.value = Array.isArray(assignmentsData) ? assignmentsData : [];
+
+    // 获取所有提交并添加作业标题
+    const submissionsData = await getAllSubmissions();
+    if (Array.isArray(submissionsData)) {
+      allSubmissions.value = submissionsData.map(submission => {
+        const assignment = allAssignments.value.find(a => a.id === submission.assignmentId);
+        return {
+          ...submission,
+          assignmentTitle: assignment?.title || '未知作业'
+        };
+      });
+    } else {
+      allSubmissions.value = [];
+    }
+
+    // 生成近期活动数据
+    generateRecentActivities();
+  } catch (error) {
+    ElMessage.error('加载数据失败');
+    console.error('加载数据失败:', error);
+    // 确保数据始终是数组，防止表格渲染错误
+    allUsers.value = [];
+    allAssignments.value = [];
+    allSubmissions.value = [];
+  }
 };
 
 // 跳转到作业详情
@@ -219,7 +196,7 @@ const editUser = (user) => {
 };
 
 // 删除用户
-const deleteUser = async (studentId, userName) => {
+const deleteUser = async (id, userName) => {
   try {
     await ElMessageBox.confirm(
       `确定要删除用户「${userName}」吗？删除后将无法恢复。`,
@@ -232,7 +209,7 @@ const deleteUser = async (studentId, userName) => {
     );
 
     // 调用删除接口
-    await deleteUserAPI(studentId);
+    await deleteUserAPI(id);
 
     ElMessage.success('用户删除成功');
 
@@ -243,6 +220,34 @@ const deleteUser = async (studentId, userName) => {
     if (error !== 'cancel') {
       ElMessage.error(error.response?.data?.message || '用户删除失败');
       console.error('用户删除失败:', error);
+    }
+  }
+};
+
+// 重置密码
+const resetPassword = async (id, userName, studentId) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要重置用户「${userName}」的密码吗？重置后密码将恢复为学号「${studentId}」。`,
+      '确认重置密码',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    );
+
+    // 调用重置密码接口
+    const result = await resetPasswordAPI(id);
+
+    ElMessage.success(`密码重置成功，默认密码为：${result.defaultPassword || studentId}`);
+
+    // 重新加载数据
+    loadData();
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.message || '密码重置失败');
+      console.error('密码重置失败:', error);
     }
   }
 };

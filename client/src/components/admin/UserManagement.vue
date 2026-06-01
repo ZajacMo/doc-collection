@@ -3,11 +3,9 @@
     <!-- 用户操作 -->
     <div class="user-actions">
       <el-button type="primary" @click="$emit('show-import-dialog')">
-
         导入用户
       </el-button>
       <el-button type="primary" @click="$emit('show-add-dialog')">
-
         添加用户
       </el-button>
     </div>
@@ -17,7 +15,6 @@
       <el-input
         v-model="searchKeyword"
         placeholder="搜索用户（学号/姓名/班级）"
-
         @keyup.enter="handleSearch"
       >
         <el-button @click="handleSearch">搜索</el-button>
@@ -35,7 +32,7 @@
       <el-table-column type="index" label="序号" width="80"></el-table-column>
       <el-table-column prop="studentId" label="学号" width="120"></el-table-column>
       <el-table-column prop="name" label="姓名" width="120"></el-table-column>
-      <el-table-column prop="class" label="班级" width="120"></el-table-column>
+      <el-table-column prop="className" label="班级" width="120"></el-table-column>
       <el-table-column prop="role" label="角色" width="100">
         <template #default="{ row }">
           <el-tag
@@ -58,7 +55,7 @@
           {{ row && row.createTime ? formatDate(row.createTime) : '-' }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="280" fixed="right">
         <template #default="{ row }">
           <template v-if="row">
             <el-button
@@ -70,9 +67,17 @@
             </el-button>
             <el-button
               v-if="row.role !== 'admin'"
+              type="warning"
+              size="small"
+              @click="$emit('reset-password', row.id, row.name, row.studentId)"
+            >
+              重置密码
+            </el-button>
+            <el-button
+              v-if="row.role !== 'admin'"
               type="danger"
               size="small"
-              @click="$emit('delete-user', row.studentId, row.name)"
+              @click="$emit('delete-user', row.id, row.name)"
             >
               删除
             </el-button>
@@ -102,11 +107,6 @@
 import { formatDate } from "@/utils/date";
 import { ref, computed } from 'vue';
 
-/**
- * 用户管理组件
- * 负责用户的展示、搜索、分页和操作
- */
-
 const props = defineProps({
   allUsers: {
     type: Array,
@@ -114,7 +114,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['show-import-dialog', 'show-add-dialog', 'edit-user', 'delete-user']);
+const emit = defineEmits(['show-import-dialog', 'show-add-dialog', 'edit-user', 'delete-user', 'reset-password']);
 
 const searchKeyword = ref('');
 const currentPage = ref(1);
@@ -130,9 +130,9 @@ const filteredUsers = computed(() => {
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase();
     result = result.filter(user =>
-      user.studentId.toLowerCase().includes(keyword) ||
-      user.name.toLowerCase().includes(keyword) ||
-      user.class.toLowerCase().includes(keyword)
+      user.studentId?.toLowerCase().includes(keyword) ||
+      user.name?.toLowerCase().includes(keyword) ||
+      user.className?.toLowerCase().includes(keyword)
     );
   }
 
@@ -172,12 +172,6 @@ const handleSizeChange = (size) => {
 const handleCurrentChange = (current) => {
   currentPage.value = current;
 };
-
-/**
- * 格式化日期时间
- * @param {string} dateString - 日期字符串
- * @returns {string} 格式化后的日期时间字符串
- */
 </script>
 
 <style scoped>

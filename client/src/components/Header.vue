@@ -11,7 +11,7 @@ const props = defineProps({
 })
 
 // 定义emits
-const emit = defineEmits(['go-to-profile', 'logout'])
+const emit = defineEmits(['go-to-profile', 'logout', 'change-password'])
 
 // 处理跳转到个人中心
 const handleGoToProfile = () => {
@@ -21,6 +21,11 @@ const handleGoToProfile = () => {
 // 处理退出登录
 const handleLogout = () => {
   emit('logout')
+}
+
+// 处理修改密码
+const handleChangePassword = () => {
+  emit('change-password')
 }
 </script>
 
@@ -52,6 +57,7 @@ const handleLogout = () => {
           :user-info="userInfo"
           :on-go-to-profile="handleGoToProfile"
           :on-logout="handleLogout"
+          :on-change-password="handleChangePassword"
         />
       </div>
     </div>
