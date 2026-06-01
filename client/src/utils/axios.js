@@ -70,7 +70,8 @@ api.interceptors.response.use(
           // 未授权，清除token并跳转到登录页
           localStorage.removeItem('token');
           localStorage.removeItem('userInfo');
-          window.location.href = '/';
+          // 使用 replace 避免历史记录堆积
+          window.location.replace('/');
           break;
         case 403:
           // 禁止访问

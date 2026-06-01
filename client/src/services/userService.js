@@ -16,14 +16,13 @@ export const loginUser = async (studentId, password) => {
     
     // console.log('登录请求成功，响应数据:', response);
     
-    // 后端返回的结构是 { message: '登录成功', user: {...} }
+    // 后端返回的结构是 { message: '登录成功', token, user: {...} }
     // 保存用户信息到本地存储
     localStorage.setItem('userInfo', JSON.stringify(response));
-    
-    // 对于token，由于后端没有返回，我们可以使用一个简单的标识
-    // 或者直接使用用户ID作为临时token
-    localStorage.setItem('token', response.user.id || '');
-    
+
+    // 保存后端返回的 JWT token
+    localStorage.setItem('token', response.token || '');
+
     // 返回带有完整信息的响应对象，包括role在user对象中
     return response;
   } catch (error) {
@@ -115,9 +114,16 @@ export const logoutUser = () => {
 export const getCurrentUser = () => {
   const userInfo = localStorage.getItem('userInfo');
   if (userInfo) {
-    const parsed = JSON.parse(userInfo);
-    // 返回完整的用户信息对象，包括嵌套的user对象
-    return parsed;
+    try {
+      const parsed = JSON.parse(userInfo);
+      // 返回完整的用户信息对象，包括嵌套的user对象
+      return parsed;
+    } catch {
+      // localStorage 数据损坏，清除后返回 null
+      localStorage.removeItem('userInfo');
+      localStorage.removeItem('token');
+      return null;
+    }
   }
   return null;
 };

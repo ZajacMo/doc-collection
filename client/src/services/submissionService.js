@@ -102,9 +102,9 @@ export const submitAssignment = async (formData) => {
     
     // 直接发送处理后的submissionData对象
     const response = await api.post(API_ENDPOINTS.SUBMISSIONS.CREATE, submissionData);
-    
+
     console.log('提交作业响应:', response);
-    return response.data;
+    return response;
   } catch (error) {
     console.error('提交作业API错误详情:', {
       message: error.message,
@@ -195,27 +195,35 @@ export const validateFileName = (fileName, namingRule, userInfo, assignmentTitle
   try {
     // 移除文件扩展名
     const nameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
-    
+
+    // 辅助函数：检查字段是否作为独立标记存在（前后为边界或分隔符）
+    const hasToken = (text, token) => {
+      if (!token) return false;
+      const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(`(^|[_-])${escaped}([_-]|$)`);
+      return re.test(text);
+    };
+
     // 检查是否包含必要的变量
-    if (namingRule.includes('{学号}') && !nameWithoutExtension.includes(userInfo.studentId)) {
+    if (namingRule.includes('{学号}') && !hasToken(nameWithoutExtension, userInfo.studentId)) {
       return { isValid: false, message: '文件名必须包含学号' };
     }
-    
-    if (namingRule.includes('{姓名}') && !nameWithoutExtension.includes(userInfo.name)) {
+
+    if (namingRule.includes('{姓名}') && !hasToken(nameWithoutExtension, userInfo.name)) {
       return { isValid: false, message: '文件名必须包含姓名' };
     }
-    
+
     const cleanAssignmentTitle = assignmentTitle.replace(/[\s\/\\:*?"<>|]/g, '');
-    if (namingRule.includes('{作业名称}') && !nameWithoutExtension.includes(cleanAssignmentTitle)) {
+    if (namingRule.includes('{作业名称}') && !hasToken(nameWithoutExtension, cleanAssignmentTitle)) {
       return { isValid: false, message: '文件名必须包含作业名称' };
     }
-    
+
     // 检查是否包含非法字符
     const illegalChars = /[\\/:*?"<>|]/;
     if (illegalChars.test(nameWithoutExtension)) {
       return { isValid: false, message: '文件名不能包含特殊字符：\\/:*?"<>|' };
     }
-    
+
     return { isValid: true };
   } catch (error) {
     console.error('验证文件名失败:', error);
