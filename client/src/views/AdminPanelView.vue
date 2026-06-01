@@ -7,7 +7,7 @@
     </div>
 
     <!-- 管理选项卡 -->
-    <el-tabs v-model="activeTab" type="border-card" style="width: 100%">
+    <el-tabs v-model="activeTab" class="admin-tabs" style="width: 100%">
       <!-- 系统概览 -->
       <el-tab-pane label="系统概览" name="overview">
         <overview-section
@@ -340,75 +340,40 @@ onMounted(() => {
 
 .page-header h2 {
   font-size: 24px;
-  font-weight: 600;
-  color: #303133;
+  font-weight: 700;
+  color: var(--text-primary);
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
-/* 系统概览部分样式 */
-.overview-section {
+/* Tabs 样式 */
+:deep(.admin-tabs .el-tabs__header) {
   margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.overview-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 20px;
+:deep(.admin-tabs .el-tabs__nav-wrap::after) {
+  height: 1px;
+  background-color: var(--border-color);
 }
 
-.overview-card {
-  cursor: pointer;
-  transition: all 0.3s ease;
+:deep(.admin-tabs .el-tabs__item) {
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 0 20px;
+  height: 44px;
+  line-height: 44px;
 }
 
-.overview-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.overview-content {
-  display: flex;
-  align-items: center;
-}
-
-.overview-icon {
-  width: 50px;
-  height: 50px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 15px;
-}
-
-.overview-icon i {
-  color: white;
-  font-size: 24px;
-}
-
-.overview-info {
-  flex: 1;
-}
-
-.overview-number {
-  font-size: 28px;
+:deep(.admin-tabs .el-tabs__item.is-active) {
+  color: var(--color-primary);
   font-weight: 600;
-  color: #303133;
-  margin-bottom: 5px;
 }
 
-.overview-label {
-  font-size: 14px;
-  color: #909399;
-}
-
-.recent-activities h3 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 15px 0;
+:deep(.admin-tabs .el-tabs__active-bar) {
+  background-color: var(--color-primary);
+  height: 3px;
+  border-radius: 2px;
 }
 
 /* 用户管理部分样式 */
@@ -464,7 +429,7 @@ onMounted(() => {
 
 .form-tip {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
   margin-top: 5px;
 }
 

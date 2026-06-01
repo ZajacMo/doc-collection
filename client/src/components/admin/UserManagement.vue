@@ -182,9 +182,9 @@ const handleCurrentChange = (current) => {
 
 <style scoped>
 .user-management {
-  background-color: white;
+  background-color: var(--bg-card);
   padding: 30px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .user-actions {
