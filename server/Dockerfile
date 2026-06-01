@@ -1,5 +1,5 @@
 # 使用Node.js官方镜像作为基础镜像
-FROM node:18-alpine
+FROM node:18.20-alpine
 
 # 设置工作目录
 WORKDIR /app
@@ -20,8 +20,11 @@ COPY server/ ./
 COPY server/entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 
-# 创建必要的目录
-RUN mkdir -p uploads db data
+# 创建必要的目录并设置权限
+RUN mkdir -p uploads db data && chown -R node:node /app
+
+# 切换到非 root 用户运行
+USER node
 
 # 复制数据备份
 COPY server/data/data-backend.tar.gz ./data/

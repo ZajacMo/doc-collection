@@ -1,5 +1,5 @@
 # 阶段1：构建前端应用
-FROM node:18-alpine AS build
+FROM node:18.20-alpine AS build
 
 # 设置工作目录
 WORKDIR /app
@@ -17,7 +17,7 @@ COPY . .
 RUN npm run build
 
 # 阶段2：使用Nginx提供静态文件
-FROM nginx:alpine
+FROM nginx:1.27-alpine
 
 # 复制构建产物到Nginx的静态文件目录
 COPY --from=build /app/dist /usr/share/nginx/html
