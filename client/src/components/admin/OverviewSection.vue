@@ -4,7 +4,7 @@
       <el-card class="overview-card">
         <div class="overview-content">
           <div class="overview-icon">
-            <i class="el-icon-user"></i>
+
           </div>
           <div class="overview-info">
             <div class="overview-number">{{ totalStudents }}</div>
@@ -15,7 +15,7 @@
       <el-card class="overview-card">
         <div class="overview-content">
           <div class="overview-icon">
-            <i class="el-icon-document-copy"></i>
+
           </div>
           <div class="overview-info">
             <div class="overview-number">{{ totalAssignments }}</div>
@@ -26,7 +26,7 @@
       <el-card class="overview-card">
         <div class="overview-content">
           <div class="overview-icon">
-            <i class="el-icon-upload2"></i>
+
           </div>
           <div class="overview-info">
             <div class="overview-number">{{ totalSubmissions }}</div>
@@ -37,7 +37,7 @@
       <el-card class="overview-card">
         <div class="overview-content">
           <div class="overview-icon">
-            <i class="el-icon-calendar"></i>
+
           </div>
           <div class="overview-info">
             <div class="overview-number">{{ pendingAssignments }}</div>
@@ -50,8 +50,8 @@
     <!-- 近期活动 -->
     <div class="recent-activities">
       <h3>近期活动</h3>
-      <el-table 
-        :data="recentActivitiesData" 
+      <el-table
+        :data="recentActivitiesData"
         style="width: 100%"
         stripe
         border
@@ -70,52 +70,36 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { formatDate } from "@/utils/date";
+
 /**
  * 系统概览组件
  * 展示系统的关键统计信息和近期活动
  */
-export default {
-  name: 'OverviewSection',
-  props: {
-    totalStudents: {
-      type: Number,
-      default: 0
-    },
-    totalAssignments: {
-      type: Number,
-      default: 0
-    },
-    totalSubmissions: {
-      type: Number,
-      default: 0
-    },
-    pendingAssignments: {
-      type: Number,
-      default: 0
-    },
-    recentActivitiesData: {
-      type: Array,
-      default: () => []
-    }
-  },
-  setup() {
-    /**
-     * 格式化日期时间
-     * @param {string} dateString - 日期字符串
-     * @returns {string} 格式化后的日期时间字符串
-     */
-    const formatDate = (dateString) => {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-    };
 
-    return {
-      formatDate
-    };
+const props = defineProps({
+  totalStudents: {
+    type: Number,
+    default: 0
+  },
+  totalAssignments: {
+    type: Number,
+    default: 0
+  },
+  totalSubmissions: {
+    type: Number,
+    default: 0
+  },
+  pendingAssignments: {
+    type: Number,
+    default: 0
+  },
+  recentActivitiesData: {
+    type: Array,
+    default: () => []
   }
-};
+});
 </script>
 
 <style scoped>

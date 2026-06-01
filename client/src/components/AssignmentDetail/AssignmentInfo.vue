@@ -23,61 +23,15 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'AssignmentInfo',
-  props: {
-    assignment: {
-      type: Object,
-      required: true
-    }
-  },
-  methods: {
-    // 格式化日期
-    formatDate(dateString) {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-    },
-    
-    // 检查作业是否已过期
-    isAssignmentExpired(deadline) {
-      if (!deadline) return false;
-      return new Date() > new Date(deadline);
-    },
-    
-    // 检查作业是否紧急（24小时内截止）
-    isAssignmentUrgent(deadline) {
-      if (!deadline) return false;
-      const now = new Date();
-      const deadlineDate = new Date(deadline);
-      const diff = deadlineDate - now;
-      return diff > 0 && diff < 24 * 60 * 60 * 1000;
-    },
-    
-    // 计算剩余时间
-    getCountdown(deadline) {
-      if (!deadline) return '';
-      const now = new Date();
-      const deadlineDate = new Date(deadline);
-      const diff = deadlineDate - now;
-      
-      if (diff <= 0) return '已逾期';
-      
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      
-      if (days > 0) {
-        return `${days}天${hours}小时`;
-      } else if (hours > 0) {
-        return `${hours}小时${minutes}分钟`;
-      } else {
-        return `${minutes}分钟`;
-      }
-    }
+<script setup>
+import { formatDate } from "@/utils/date";
+
+defineProps({
+  assignment: {
+    type: Object,
+    required: true
   }
-};
+});
 </script>
 
 <style scoped>

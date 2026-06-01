@@ -17,69 +17,56 @@
         </el-select>
       </el-col>
       <el-col :span="12">
-        <el-input 
-          v-model="searchKeyword" 
-          placeholder="搜索作业名称" 
-          prefix-icon="el-icon-search"
-          @keyup.enter.native="handleSearch"
+        <el-input
+          v-model="searchKeyword"
+          placeholder="搜索作业名称"
+          @keyup.enter="handleSearch"
         >
-          <el-button slot="append" icon="el-icon-search" @click="handleSearch"></el-button>
+          <el-button @click="handleSearch">搜索</el-button>
         </el-input>
       </el-col>
     </el-row>
   </div>
 </template>
 
-<script>
-import { defineComponent, ref } from 'vue';
+<script setup>
+import { ref } from 'vue';
 
-export default defineComponent({
-  name: 'FilterSection',
-  props: {
-    initialStatusFilter: {
-      type: String,
-      default: 'all'
-    },
-    initialUrgentFilter: {
-      type: String,
-      default: 'all'
-    },
-    initialSearchKeyword: {
-      type: String,
-      default: ''
-    }
+const props = defineProps({
+  initialStatusFilter: {
+    type: String,
+    default: 'all'
   },
-  emits: ['filter-change', 'search'],
-  setup(props, { emit }) {
-    const statusFilter = ref(props.initialStatusFilter);
-    const urgentFilter = ref(props.initialUrgentFilter);
-    const searchKeyword = ref(props.initialSearchKeyword);
-
-    const handleFilterChange = () => {
-      emit('filter-change', {
-        statusFilter: statusFilter.value,
-        urgentFilter: urgentFilter.value,
-        searchKeyword: searchKeyword.value
-      });
-    };
-
-    const handleSearch = () => {
-      emit('search', {
-        statusFilter: statusFilter.value,
-        urgentFilter: urgentFilter.value,
-        searchKeyword: searchKeyword.value
-      });
-    };
-
-    return {
-      statusFilter,
-      urgentFilter,
-      searchKeyword,
-      handleFilterChange,
-      handleSearch
-    };
+  initialUrgentFilter: {
+    type: String,
+    default: 'all'
+  },
+  initialSearchKeyword: {
+    type: String,
+    default: ''
   }
 });
+
+const emit = defineEmits(['filter-change', 'search']);
+const statusFilter = ref(props.initialStatusFilter);
+const urgentFilter = ref(props.initialUrgentFilter);
+const searchKeyword = ref(props.initialSearchKeyword);
+
+const handleFilterChange = () => {
+  emit('filter-change', {
+    statusFilter: statusFilter.value,
+    urgentFilter: urgentFilter.value,
+    searchKeyword: searchKeyword.value
+  });
+};
+
+const handleSearch = () => {
+  emit('search', {
+    statusFilter: statusFilter.value,
+    urgentFilter: urgentFilter.value,
+    searchKeyword: searchKeyword.value
+  });
+};
 </script>
 
 <style scoped>

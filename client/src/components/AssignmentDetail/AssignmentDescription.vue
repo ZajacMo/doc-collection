@@ -5,16 +5,13 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'AssignmentDescription',
-  props: {
-    assignment: {
-      type: Object,
-      required: true
-    }
+<script setup>
+const props = defineProps({
+  assignment: {
+    type: Object,
+    required: true
   }
-};
+});
 </script>
 
 <style scoped>

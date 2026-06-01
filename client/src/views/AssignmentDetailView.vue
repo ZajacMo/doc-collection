@@ -3,7 +3,6 @@
     <!-- 返回按钮 -->
     <div class="back-button-container">
       <el-button type="text" @click="goBack">
-        <i class="el-icon-arrow-left"></i>
         返回作业列表
       </el-button>
     </div>
@@ -99,7 +98,7 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AssignmentFormDialog from '../components/AssignmentFormDialog.vue';
@@ -107,7 +106,6 @@ import AssignmentHeader from '../components/AssignmentDetail/AssignmentHeader.vu
 import AssignmentInfo from '../components/AssignmentDetail/AssignmentInfo.vue';
 import AssignmentDescription from '../components/AssignmentDetail/AssignmentDescription.vue';
 import SubmissionForm from '../components/AssignmentDetail/SubmissionForm.vue';
-// import SubmittedStatusCard from '../components/AssignmentDetail/SubmittedStatusCard.vue';
 import NoticeCard from '../components/AssignmentDetail/NoticeCard.vue';
 import SubmissionStats from '../components/AssignmentDetail/SubmissionStats.vue';
 import SubmissionList from '../components/SubmissionList.vue';
@@ -129,315 +127,278 @@ import {
   downloadFile as downloadFileAPI,
   getStudentSubmission
 } from '../services/submissionService';
+const userInfo = ref(getCurrentUserInfo());
+const assignment = ref(null);
+const submissionInfo = ref(null);
+const submissionList = ref([]);
+const allStudents = ref(0);
+const loading = ref(true);
+const updateDialogVisible = ref(false);
+const assignmentStatus = ref('in_progress');
 
-export default {
-  name: 'AssignmentDetailView',
-  components: {
-    AssignmentFormDialog,
-    AssignmentHeader,
-    AssignmentInfo,
-    AssignmentDescription,
-    SubmissionForm,
-    NoticeCard,
-    SubmissionStats,
-    SubmissionList
-  },
-  setup() {
-    const userInfo = ref(getCurrentUserInfo());
-    const assignment = ref(null);
-    const submissionInfo = ref(null);
-    const submissionList = ref([]);
-    const allStudents = ref(0);
-    const loading = ref(true);
-    const updateDialogVisible = ref(false);
-    const assignmentStatus = ref('in_progress');
-    
-    // 检查作业是否已过期
-    const isAssignmentExpired = (deadline) => {
-      return checkAssignmentExpired(deadline);
-    };
-    
-    // 使用Vue Router获取路由信息
-    const route = useRoute();
-    const router = useRouter();
-    
-    // 移除了已移至SubmissionForm组件的提交作业相关方法
-    // 移除了formatDate、formatFileSize等已移至各组件的辅助函数
-    
-    // 获取作业ID
-    const getAssignmentIdFromUrl = () => {
-      // 优先从route params获取作业ID，其次从query获取
-      let assignmentId = route.params.id || route.query.id;
-      return assignmentId;
-    };
-    
-    // 加载数据
-    const loadData = async () => {
-      try {
-        loading.value = true;
-        
-        // 直接从route params获取ID，这是最可靠的方式
-        let assignmentId = route.params.id;
-        
-        // 验证assignmentId是否有效
-        if (!assignmentId || assignmentId.trim() === '') {
-          throw new Error('无效的作业ID');
-        }
-        
-        // 确保ID是字符串类型
-        assignmentId = String(assignmentId);
-        
-        // 获取作业详情
-        assignment.value = await getAssignmentById(assignmentId);
-        submissionInfo.value  = await getStudentSubmission(userInfo.value.studentId, assignmentId);
-        assignmentStatus.value = submissionInfo.value["status"];
-        // console.log("submissionInfo.value:",submissionInfo.value);
+// 检查作业是否已过期
+const isAssignmentExpired = (deadline) => {
+  return checkAssignmentExpired(deadline);
+};
 
-        
-        // 使用getCurrentUserInfo获取正确的用户信息
-        const currentUserInfo = getCurrentUserInfo();
-        // console.log('Current User Info:', currentUserInfo);
-        const userIdFromUserData = currentUserInfo?.studentId;
-        const userIdFromLocalStorage = localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.studentId : null;
-        const studentId = userIdFromUserData || userIdFromLocalStorage;
-        
-        // 保存到localStorage以便下次使用
-        if (studentId) {
-          localStorage.setItem('studentId', studentId);
-        }
-        const studentName = currentUserInfo?.name || (localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.name : '');
-        if (studentName) {
-          localStorage.setItem('studentName', studentName);
-        }
+// 使用Vue Router获取路由信息
+const route = useRoute();
+const router = useRouter();
 
-        // 如果是管理员，获取所有提交记录和学生总数
-        if (currentUserInfo?.role === 'admin') {
-          const submissionListData = await getSubmissionsByAssignment(assignmentId);
-          submissionList.value = submissionListData || [];
-          
-          // 获取需要提交的用户总数
-          try {
-            const userCountResponse = await getAssignmentUserCount(assignmentId);
-            allStudents.value = userCountResponse?.userCount || 0;
-          } catch (error) {
-            console.error('AssignmentDetailView - 获取学生总数失败:', error);
-            allStudents.value = 0;
-          }
-        }
-        
-      } catch (error) {
-        ElMessage.error('加载作业详情失败', error);
-        console.error('加载作业详情失败:', error);
-      } finally {
-        loading.value = false;
-      }
-    };
+// 移除了已移至SubmissionForm组件的提交作业相关方法
+// 移除了formatDate、formatFileSize等已移至各组件的辅助函数
+
+// 获取作业ID
+const getAssignmentIdFromUrl = () => {
+  // 优先从route params获取作业ID，其次从query获取
+  let assignmentId = route.params.id || route.query.id;
+  return assignmentId;
+};
+
+// 加载数据
+const loadData = async () => {
+  try {
+    loading.value = true;
     
-    // 返回作业列表
-    const goBack = () => {
-      router.push('/assignments');
-    };
+    // 直接从route params获取ID，这是最可靠的方式
+    let assignmentId = route.params.id;
     
-    // goToSubmit函数已移除，因为提交按钮已删除
+    // 验证assignmentId是否有效
+    if (!assignmentId || assignmentId.trim() === '') {
+      throw new Error('无效的作业ID');
+    }
     
-    // 跳转到个人中心
-    const goToProfile = () => {
-      router.push('/profile');
-    };
+    // 确保ID是字符串类型
+    assignmentId = String(assignmentId);
     
-    // 退出登录
-    const handleLogout = () => {
-      logoutUser();
-    };
-    
-    // 显示编辑作业对话框
-    const showUpdateDialog = () => {
-      // 直接打开对话框，组件内部会处理表单数据的初始化
-      if (assignment.value) {
-        updateDialogVisible.value = true;
-      } else {
-        ElMessage.warning('作业数据未加载完成，请稍后再试');
-      }
-    };
-    
-    // 处理更新作业
-    const handleUpdateAssignment = async (formData) => {
-      try {
-        // 调用更新作业接口
-        const assignmentId = getAssignmentIdFromUrl();
-        await updateAssignment(assignmentId, formData);
-        
-        ElMessage.success('作业更新成功');
-        updateDialogVisible.value = false;
-        
-        // 重新加载数据
-        loadData();
-      } catch (error) {
-        ElMessage.error(error.response?.data?.message || '更新作业失败');
-        console.error('更新作业失败:', error);
-      }
-    };
-    
+    // 获取作业详情
+    assignment.value = await getAssignmentById(assignmentId);
+    submissionInfo.value  = await getStudentSubmission(userInfo.value.studentId, assignmentId);
+    assignmentStatus.value = submissionInfo.value["status"];
+    // console.log("submissionInfo.value:",submissionInfo.value);
 
     
-    // 下载文件
-    const downloadFile = async (fileId, fileName) => {
-      try {
-        await downloadFileAPI(fileId, fileName);
-      } catch (error) {
-        ElMessage.error('文件下载失败');
-        console.error('文件下载失败:', error);
-      }
-    };
+    // 使用getCurrentUserInfo获取正确的用户信息
+    const currentUserInfo = getCurrentUserInfo();
+    // console.log('Current User Info:', currentUserInfo);
+    const userIdFromUserData = currentUserInfo?.studentId;
+    const userIdFromLocalStorage = localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.studentId : null;
+    const studentId = userIdFromUserData || userIdFromLocalStorage;
     
-    // 下载我的文件
-    const downloadMyFile = () => {
-      if (submissionInfo.value) {
-        downloadFile(submissionInfo.value.fileId, submissionInfo.value.fileName);
-      }
-    };
-    
-    // 删除提交
-    const deleteSubmission = async (submissionId) => {
-      try {
-        await ElMessageBox.confirm(
-          '确定要删除此提交记录吗？删除后将无法恢复。',
-          '确认删除',
-          {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
-            type: 'warning'
-          }
-        );
-        
-        // 调用删除接口
-        await deleteSubmissionAPI(submissionId);
-        
-        ElMessage.success('提交记录删除成功');
-        
-        // 重新加载数据
-        loadData();
-      } catch (error) {
-        // 用户取消删除不会抛出错误，只有真正的错误才会显示提示
-        if (error !== 'cancel') {
-          ElMessage.error(error.response?.data?.message || '删除提交记录失败');
-          console.error('删除提交记录失败:', error);
-        }
-      }
-    };
-    
-    // 导出未提交作业的学生名单
-    const exportUnsubmittedList = async () => {
-      try {
-        const assignmentId = route.params.id;
-        // 显示加载提示
-        ElMessage('正在准备导出名单...');
-        
-        // 获取未提交作业的学生名单
-        const missingSubmissionsData = await getMissingSubmissions(assignmentId);
-        console.log('未提交作业数据:', missingSubmissionsData);
-        
-        // if (!missingSubmissionsData || !missingSubmissionsData.data) {
-        //   ElMessage.error('获取未提交名单失败');
-        //   return;
-        // }
-        
-        const { missingStudents, assignmentTitle } = missingSubmissionsData;
-        
-        if (!Array.isArray(missingStudents) || missingStudents.length === 0) {
-          ElMessage.success('所有学生都已提交作业，无需导出');
-          return;
-        }
-        
-        // 构建CSV内容
-        let csvContent = '学号,姓名\n';
-        missingStudents.forEach(student => {
-          csvContent += `${student.studentId},${student.studentName}\n`;
-        });
-        
-        // 创建Blob对象
-        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        
-        // 创建下载链接
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `未提交学生名单_${assignmentTitle}.csv`);
-        link.style.visibility = 'hidden';
-        
-        // 添加到DOM并触发点击
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // 释放URL对象
-        URL.revokeObjectURL(url);
-        
-        ElMessage.success('导出成功');
-      } catch (error) {
-        console.error('导出未提交名单失败:', error);
-        ElMessage.error('导出失败，请稍后再试');
-      }
-    };
+    // 保存到localStorage以便下次使用
+    if (studentId) {
+      localStorage.setItem('studentId', studentId);
+    }
+    const studentName = currentUserInfo?.name || (localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')).user?.name : '');
+    if (studentName) {
+      localStorage.setItem('studentName', studentName);
+    }
 
-    // 下载所有提交的作业
-    const handleDownloadAll = async () => {
+    // 如果是管理员，获取所有提交记录和学生总数
+    if (currentUserInfo?.role === 'admin') {
+      const submissionListData = await getSubmissionsByAssignment(assignmentId);
+      submissionList.value = submissionListData || [];
+      
+      // 获取需要提交的用户总数
       try {
-        const assignmentId = route.params.id;
-        const title = assignment.value?.title || '作业';
-        
-        ElMessage({
-          message: '正在打包下载，请稍候...',
-          type: 'info',
-          duration: 2000
-        });
-        
-        await downloadAllSubmissions(assignmentId, `${title}.zip`);
-        
-        ElMessage.success('下载成功');
+        const userCountResponse = await getAssignmentUserCount(assignmentId);
+        allStudents.value = userCountResponse?.userCount || 0;
       } catch (error) {
-        console.error('批量下载失败:', error);
-        // 如果是404错误，说明没有提交记录
-        if (error.response && error.response.status === 404) {
-          ElMessage.warning('暂无提交记录，无法下载');
-        } else if (error.response && error.response.status === 400) {
-          ElMessage.error(`文件完整性校验失败：${error.response.data.message || '文件缺失'}`);
-        } else {
-          ElMessage.error('下载失败，请稍后再试');
-        }
+        console.error('AssignmentDetailView - 获取学生总数失败:', error);
+        allStudents.value = 0;
       }
-    };
+    }
     
-    // 组件挂载时加载数据
-    onMounted(() => {
-      loadData();
+  } catch (error) {
+    ElMessage.error('加载作业详情失败', error);
+    console.error('加载作业详情失败:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 返回作业列表
+const goBack = () => {
+  router.push('/assignments');
+};
+
+// goToSubmit函数已移除，因为提交按钮已删除
+
+// 跳转到个人中心
+const goToProfile = () => {
+  router.push('/profile');
+};
+
+// 退出登录
+const handleLogout = () => {
+  logoutUser();
+};
+
+// 显示编辑作业对话框
+const showUpdateDialog = () => {
+  // 直接打开对话框，组件内部会处理表单数据的初始化
+  if (assignment.value) {
+    updateDialogVisible.value = true;
+  } else {
+    ElMessage.warning('作业数据未加载完成，请稍后再试');
+  }
+};
+
+// 处理更新作业
+const handleUpdateAssignment = async (formData) => {
+  try {
+    // 调用更新作业接口
+    const assignmentId = getAssignmentIdFromUrl();
+    await updateAssignment(assignmentId, formData);
+    
+    ElMessage.success('作业更新成功');
+    updateDialogVisible.value = false;
+    
+    // 重新加载数据
+    loadData();
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '更新作业失败');
+    console.error('更新作业失败:', error);
+  }
+};
+
+
+
+// 下载文件
+const downloadFile = async (fileId, fileName) => {
+  try {
+    await downloadFileAPI(fileId, fileName);
+  } catch (error) {
+    ElMessage.error('文件下载失败');
+    console.error('文件下载失败:', error);
+  }
+};
+
+// 下载我的文件
+const downloadMyFile = () => {
+  if (submissionInfo.value) {
+    downloadFile(submissionInfo.value.fileId, submissionInfo.value.fileName);
+  }
+};
+
+// 删除提交
+const deleteSubmission = async (submissionId) => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要删除此提交记录吗？删除后将无法恢复。',
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    );
+    
+    // 调用删除接口
+    await deleteSubmissionAPI(submissionId);
+    
+    ElMessage.success('提交记录删除成功');
+    
+    // 重新加载数据
+    loadData();
+  } catch (error) {
+    // 用户取消删除不会抛出错误，只有真正的错误才会显示提示
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.message || '删除提交记录失败');
+      console.error('删除提交记录失败:', error);
+    }
+  }
+};
+
+// 导出未提交作业的学生名单
+const exportUnsubmittedList = async () => {
+  try {
+    const assignmentId = route.params.id;
+    // 显示加载提示
+    ElMessage('正在准备导出名单...');
+    
+    // 获取未提交作业的学生名单
+    const missingSubmissionsData = await getMissingSubmissions(assignmentId);
+    console.log('未提交作业数据:', missingSubmissionsData);
+    
+    // if (!missingSubmissionsData || !missingSubmissionsData.data) {
+    //   ElMessage.error('获取未提交名单失败');
+    //   return;
+    // }
+    
+    const { missingStudents, assignmentTitle } = missingSubmissionsData;
+    
+    if (!Array.isArray(missingStudents) || missingStudents.length === 0) {
+      ElMessage.success('所有学生都已提交作业，无需导出');
+      return;
+    }
+    
+    // 构建CSV内容
+    let csvContent = '学号,姓名\n';
+    missingStudents.forEach(student => {
+      // CSV 字段转义：以单引号开头可防止 Excel 公式注入
+      const safeId = String(student.studentId).replace(/[\r\n]/g, '');
+      const safeName = String(student.studentName).replace(/[\r\n]/g, '');
+      csvContent += `'${safeId},'${safeName}\n`;
     });
     
+    // 创建Blob对象
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
     
-    return {
-      userInfo,
-      assignment,
-      submissionInfo,
-      submissionList,
-      allStudents,
-      loading,
-      updateDialogVisible,
-      isAssignmentExpired,
-      assignmentStatus,
-      goBack,
-      goToProfile,
-      handleLogout,
-      showUpdateDialog,
-      handleUpdateAssignment,
-      downloadFile,
-      downloadMyFile,
-      deleteSubmission,
-      exportUnsubmittedList,
-      handleDownloadAll,
-      loadData
-    };
+    // 创建下载链接
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `未提交学生名单_${assignmentTitle}.csv`);
+    link.style.visibility = 'hidden';
+    
+    // 添加到DOM并触发点击
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // 释放URL对象
+    URL.revokeObjectURL(url);
+    
+    ElMessage.success('导出成功');
+  } catch (error) {
+    console.error('导出未提交名单失败:', error);
+    ElMessage.error('导出失败，请稍后再试');
   }
-}
+};
+
+// 下载所有提交的作业
+const handleDownloadAll = async () => {
+  try {
+    const assignmentId = route.params.id;
+    const title = assignment.value?.title || '作业';
+    
+    ElMessage({
+      message: '正在打包下载，请稍候...',
+      type: 'info',
+      duration: 2000
+    });
+    
+    await downloadAllSubmissions(assignmentId, `${title}.zip`);
+    
+    ElMessage.success('下载成功');
+  } catch (error) {
+    console.error('批量下载失败:', error);
+    // 如果是404错误，说明没有提交记录
+    if (error.response && error.response.status === 404) {
+      ElMessage.warning('暂无提交记录，无法下载');
+    } else if (error.response && error.response.status === 400) {
+      ElMessage.error(`文件完整性校验失败：${error.response.data.message || '文件缺失'}`);
+    } else {
+      ElMessage.error('下载失败，请稍后再试');
+    }
+  }
+};
+
+// 组件挂载时加载数据
+onMounted(() => {
+  loadData();
+});
 </script>
 
 <style scoped>

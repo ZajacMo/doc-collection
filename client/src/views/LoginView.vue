@@ -2,33 +2,33 @@
   <div class="login-container">
     <div class="login-form-wrapper">
       <h2>作业收集系统 - 登录</h2>
-      <el-form 
-        ref="loginFormRef" 
-        :model="loginForm" 
-        :rules="loginRules" 
+      <el-form
+        ref="loginFormRef"
+        :model="loginForm"
+        :rules="loginRules"
         label-width="80px"
         class="login-form"
         @submit.prevent
       >
         <el-form-item label="学号" prop="studentId">
-          <el-input 
-            v-model="loginForm.studentId" 
+          <el-input
+            v-model="loginForm.studentId"
             placeholder="请输入学号"
-            prefix-icon="el-icon-user" 
+
           />
         </el-form-item>
         <el-form-item label="密码" prop="password">
-          <el-input 
-            v-model="loginForm.password" 
-            type="password" 
+          <el-input
+            v-model="loginForm.password"
+            type="password"
             placeholder="请输入密码"
-            prefix-icon="el-icon-lock" 
+
           />
         </el-form-item>
         <el-form-item>
-          <el-button 
-            type="primary" 
-            @click="handleLogin" 
+          <el-button
+            type="primary"
+            @click="handleLogin"
             :loading="loading"
             style="width: 100%"
           >
@@ -44,78 +44,65 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, inject } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { loginUser, getCurrentUser } from '../services/userService';
 
-export default {
-  name: 'LoginView',
-  setup() {
-    const loginFormRef = ref(null);
-    const loading = ref(false);
-    const loginForm = ref({
-      studentId: '',
-      password: ''
-    });
-    const router = useRouter();
-    
-    // 注入父组件提供的updateUserInfo方法
-    const updateUserInfo = inject('updateUserInfo', () => {});
-    
-    const loginRules = ref({
-      studentId: [
-        { required: true, message: '请输入学号', trigger: 'blur' },
-        { min: 3, max: 20, message: '学号长度在 3 到 20 个字符之间', trigger: 'blur' }
-      ],
-      password: [
-        { required: true, message: '请输入密码', trigger: 'blur' },
-        { min: 6, max: 20, message: '密码长度在 6 到 20 个字符之间', trigger: 'blur' }
-      ]
-    });
-    
-    const handleLogin = async () => {
-      try {
-        // 表单验证
-        await loginFormRef.value.validate();
-        
-        loading.value = true;
+const loginFormRef = ref(null);
+const loading = ref(false);
+const loginForm = ref({
+  studentId: '',
+  password: ''
+});
+const router = useRouter();
 
-        // 调用登录接口
-        const result = await loginUser(loginForm.value.studentId, loginForm.value.password);
-        // console.log(result);
+// 注入父组件提供的updateUserInfo方法
+const updateUserInfo = inject('updateUserInfo', () => {});
 
-        ElMessage.success('登录成功');
-        // console.log(result);
-        
-        // 获取并更新用户状态
-        const userInfo = await getCurrentUser();
-        if (updateUserInfo) {
-          updateUserInfo(userInfo);
-        }
-        
-        // 根据用户角色跳转到不同页面
-        // 角色信息在result.user对象中
-        if (result.user && result.user.role === 'admin') {
-          router.push('/admin');
-        } else {
-          router.push('/home');
-        }
-      } catch (error) {
-        ElMessage.error(error.response?.data?.message || '登录失败，请检查账号密码');
-      } finally {
-        loading.value = false;
-      }
-    };
-    
-    return {
-      loginFormRef,
-      loginForm,
-      loginRules,
-      loading,
-      handleLogin
-    };
+const loginRules = ref({
+  studentId: [
+    { required: true, message: '请输入学号', trigger: 'blur' },
+    { min: 3, max: 20, message: '学号长度在 3 到 20 个字符之间', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, max: 20, message: '密码长度在 6 到 20 个字符之间', trigger: 'blur' }
+  ]
+});
+
+const handleLogin = async () => {
+  try {
+    // 表单验证
+    await loginFormRef.value.validate();
+
+    loading.value = true;
+
+    // 调用登录接口
+    const result = await loginUser(loginForm.value.studentId, loginForm.value.password);
+    // console.log(result);
+
+    ElMessage.success('登录成功');
+    // console.log(result);
+
+    // 获取并更新用户状态
+    const userInfo = await getCurrentUser();
+    if (updateUserInfo) {
+      updateUserInfo(userInfo);
+    }
+
+    // 根据用户角色跳转到不同页面
+    // 角色信息在result.user对象中
+    if (result.user && result.user.role === 'admin') {
+      router.push('/admin');
+    } else {
+      router.push('/home');
+    }
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '登录失败，请检查账号密码');
+  } finally {
+    loading.value = false;
   }
 };
 </script>
@@ -143,7 +130,7 @@ export default {
   .login-form-wrapper {
     padding: 30px 20px;
   }
-  
+
   .login-form-wrapper h2 {
     font-size: 18px;
     margin-bottom: 20px;

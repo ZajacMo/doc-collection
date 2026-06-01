@@ -1,9 +1,9 @@
 <template>
   <el-dropdown>
     <span class="el-dropdown-link">
-      <i class="el-icon-user"></i>
+
       {{ userInfo?.user?.name || userInfo?.name || '管理员' }}
-      <i class="el-icon-arrow-down el-icon--right"></i>
+
     </span>
     <template #dropdown>
       <el-dropdown-menu>
@@ -18,25 +18,23 @@
   </el-dropdown>
 </template>
 
-<script>
+<script setup>
+import { formatDate } from "@/utils/date";
 
-export default {
-  name: 'UserDropdown',
-  props: {
-    userInfo: {
-      type: Object,
-      default: null
-    },
-    onGoToProfile: {
-      type: Function,
-      required: true
-    },
-    onLogout: {
-      type: Function,
-      required: true
-    }
+const props = defineProps({
+  userInfo: {
+    type: Object,
+    default: null
+  },
+  onGoToProfile: {
+    type: Function,
+    required: true
+  },
+  onLogout: {
+    type: Function,
+    required: true
   }
-};
+});
 </script>
 
 <style scoped>

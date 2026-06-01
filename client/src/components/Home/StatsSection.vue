@@ -18,16 +18,13 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'StatsSection',
-  props: {
-    statsCards: {
-      type: Array,
-      required: true
-    }
+<script setup>
+defineProps({
+  statsCards: {
+    type: Array,
+    required: true
   }
-};
+});
 </script>
 
 <style scoped>

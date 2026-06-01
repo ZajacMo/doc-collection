@@ -88,57 +88,39 @@
   </div>
 </template>
 
-<script>
-import { defineComponent } from 'vue';
+<script setup>
+import { formatDate } from "@/utils/date";
 import { isAssignmentExpired } from '../../services/assignmentService';
 
-export default defineComponent({
-  name: 'AssignmentTable',
-  props: {
-    assignments: {
-      type: Array,
-      default: () => []
-    },
-    userInfo: {
-      type: Object,
-      default: () => ({})
-    }
+const props = defineProps({
+  assignments: {
+    type: Array,
+    default: () => []
   },
-  emits: ['detail', 'delete'],
-  setup(props, { emit }) {
-    // 格式化日期
-    const formatDate = (dateString) => {
-      if (!dateString) return '-';
-      const date = new Date(dateString);
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-    };
-    
-    // 检查作业是否紧急（24小时内截止）
-    const isAssignmentUrgent = (deadline) => {
-      if (!deadline) return false;
-      const now = new Date();
-      const deadlineDate = new Date(deadline);
-      const diff = deadlineDate - now;
-      return diff > 0 && diff < 24 * 60 * 60 * 1000;
-    };
-
-    const onDetailClick = (id) => {
-      emit('detail', id);
-    };
-
-    const onDeleteClick = (id, title) => {
-      emit('delete', { id, title });
-    };
-
-    return {
-      formatDate,
-      isAssignmentUrgent,
-      isAssignmentExpired,
-      onDetailClick,
-      onDeleteClick
-    };
+  userInfo: {
+    type: Object,
+    default: () => ({})
   }
 });
+
+const emit = defineEmits(['detail', 'delete']);
+
+// 检查作业是否紧急（24小时内截止）
+const isAssignmentUrgent = (deadline) => {
+  if (!deadline) return false;
+  const now = new Date();
+  const deadlineDate = new Date(deadline);
+  const diff = deadlineDate - now;
+  return diff > 0 && diff < 24 * 60 * 60 * 1000;
+};
+
+const onDetailClick = (id) => {
+  emit('detail', id);
+};
+
+const onDeleteClick = (id, title) => {
+  emit('delete', { id, title });
+};
 </script>
 
 <style scoped>

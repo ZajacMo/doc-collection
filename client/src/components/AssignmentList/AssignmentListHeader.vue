@@ -6,34 +6,25 @@
       type="primary" 
       @click="onCreateClick"
     >
-      <i class="el-icon-plus"></i>
+      
       创建作业
     </el-button>
   </div>
 </template>
 
-<script>
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-  name: 'AssignmentListHeader',
-  props: {
-    userInfo: {
-      type: Object,
-      default: () => ({})
-    }
-  },
-  emits: ['create'],
-  setup(props, { emit }) {
-    const onCreateClick = () => {
-      emit('create');
-    };
-
-    return {
-      onCreateClick
-    };
+<script setup>
+const props = defineProps({
+  userInfo: {
+    type: Object,
+    default: () => ({})
   }
 });
+
+const emit = defineEmits(['create']);
+
+const onCreateClick = () => {
+  emit('create');
+};
 </script>
 
 <style scoped>

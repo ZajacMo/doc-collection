@@ -2,16 +2,8 @@
   <AssignmentListContainer />
 </template>
 
-<script>
-import { defineComponent } from 'vue';
+<script setup>
 import AssignmentListContainer from '../components/AssignmentList/AssignmentListContainer.vue';
-
-export default defineComponent({
-  name: 'AssignmentListView',
-  components: {
-    AssignmentListContainer
-  }
-});
 </script>
 
 <style scoped>

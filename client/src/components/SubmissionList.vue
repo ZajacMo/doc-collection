@@ -53,57 +53,49 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'SubmissionList',
-  props: {
-    submissionList: {
-      type: Array,
-      required: true
-    },
-    userSubmission: {
-      type: Object,
-      default: null
-    },
-    isAdmin: {
-      type: Boolean,
-      default: false
-    }
+<script setup>
+import { computed } from 'vue';
+import { formatDate } from "@/utils/date";
+
+const props = defineProps({
+  submissionList: {
+    type: Array,
+    required: true
   },
-  emits: ['download', 'delete'],
-  computed: {
-    // 根据用户角色决定显示的数据
-    displayData() {
-      return this.isAdmin ? this.submissionList : (this.userSubmission ? [this.userSubmission] : []);
-    }
+  userSubmission: {
+    type: Object,
+    default: null
   },
-  methods: {
-    // 格式化日期
-    formatDate(dateString) {
-      if (!dateString) return '-';
-      const date = new Date(dateString);
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-    },
-    
-    // 格式化文件大小
-    formatFileSize(bytes) {
-      if (!bytes) return '-';
-      const k = 1024;
-      const sizes = ['B', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    },
-    
-    // 下载文件
-    downloadFile(fileId, fileName) {
-      this.$emit('download', fileId, fileName);
-    },
-    
-    // 确认删除
-    confirmDelete(submissionId) {
-      this.$emit('delete', submissionId);
-    }
+  isAdmin: {
+    type: Boolean,
+    default: false
   }
+});
+
+const emit = defineEmits(['download', 'delete']);
+
+// 根据用户角色决定显示的数据
+const displayData = computed(() => {
+  return props.isAdmin ? props.submissionList : (props.userSubmission ? [props.userSubmission] : []);
+});
+
+// 格式化文件大小
+const formatFileSize = (bytes) => {
+  if (!bytes) return '-';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+// 下载文件
+const downloadFile = (fileId, fileName) => {
+  emit('download', fileId, fileName);
+};
+
+// 确认删除
+const confirmDelete = (submissionId) => {
+  emit('delete', submissionId);
 };
 </script>
 

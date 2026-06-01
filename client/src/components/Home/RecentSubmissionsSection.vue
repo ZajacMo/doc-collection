@@ -1,8 +1,8 @@
 <template>
   <div class="recent-submissions">
     <h3>最近提交记录</h3>
-    <el-table 
-      :data="recentSubmissionsData" 
+    <el-table
+      :data="recentSubmissionsData"
       style="width: 100%"
       stripe
     >
@@ -15,13 +15,13 @@
       <el-table-column prop="fileName" label="文件名" min-width="180px" align="center"></el-table-column>
       <el-table-column prop="status" label="状态" align="center">
         <template #default="scope">
-          <el-tag 
+          <el-tag
             v-if="scope.row.status === 'submitted'"
             type="success"
           >
             已提交
           </el-tag>
-          <el-tag 
+          <el-tag
             v-if="scope.row.status === 'late'"
             type="danger"
           >
@@ -31,9 +31,9 @@
       </el-table-column>
       <el-table-column label="操作" min-width="100" fixed="right">
         <template #default="scope">
-          <el-button 
-            type="primary" 
-            size="small" 
+          <el-button
+            type="primary"
+            size="small"
             @click="goToDetail(scope.row.assignmentId)"
           >
             查看
@@ -44,33 +44,21 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'RecentSubmissionsSection',
-  props: {
-    recentSubmissionsData: {
-      type: Array,
-      required: true
-    }
-  },
-  setup(props, { emit }) {
-    // 格式化日期
-    const formatDate = (dateString) => {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-    };
-    
-    // 跳转到作业详情
-    const goToDetail = (assignmentId) => {
-      emit('go-to-detail', assignmentId);
-    };
-    
-    return {
-      formatDate,
-      goToDetail
-    };
+<script setup>
+import { formatDate } from "@/utils/date";
+
+const props = defineProps({
+  recentSubmissionsData: {
+    type: Array,
+    required: true
   }
+});
+
+const emit = defineEmits(['go-to-detail']);
+
+// 跳转到作业详情
+const goToDetail = (assignmentId) => {
+  emit('go-to-detail', assignmentId);
 };
 </script>
 
@@ -94,7 +82,7 @@ export default {
     padding: 20px 15px;
     width: 100%;
   }
-  
+
   .el-table {
     width: 100%;
     overflow-x: auto;

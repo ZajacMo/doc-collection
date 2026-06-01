@@ -8,7 +8,11 @@ import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
-const userInfo = ref(null)
+const userInfo = ref(getCurrentUser())
+
+// 提供用户信息和更新方法给子组件（必须在 setup 同步阶段）
+provide('userInfo', userInfo);
+provide('updateUserInfo', updateUserInfo);
 
 // 计算当前激活的菜单项
 const computedActiveMenuItem = () => {
@@ -59,12 +63,8 @@ const updateUserInfo = (newUserInfo) => {
 };
 
 onMounted(() => {
-  // 只获取用户信息，路由守卫已在router/index.js中配置
-  userInfo.value = getCurrentUser()
-  
-  // 提供用户信息和更新方法给子组件
-  provide('userInfo', userInfo);
-  provide('updateUserInfo', updateUserInfo);
+  // 路由守卫已在router/index.js中处理登录状态
+  // userInfo 已在 setup 中初始化
 })
 </script>
 

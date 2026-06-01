@@ -28,7 +28,7 @@ const handleLogout = () => {
   <el-header class="header">
     <div class="header-content">
       <div class="header-title">
-        <i class="el-icon-document"></i>
+        
         <span>作业收集系统</span>
       </div>
       <div class="header-user">

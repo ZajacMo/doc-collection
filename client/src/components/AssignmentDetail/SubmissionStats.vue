@@ -26,40 +26,30 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { computed } from 'vue';
 
-export default {
-  name: 'SubmissionStats',
-  props: {
-    totalStudents: {
-      type: Number,
-      required: true
-    },
-    submittedCount: {
-      type: Number,
-      required: true
-    }
+const props = defineProps({
+  totalStudents: {
+    type: Number,
+    required: true
   },
-  setup(props) {
-    // 计算未提交数量
-    const pendingCount = computed(() => props.totalStudents - props.submittedCount);
-    
-    // 计算已提交百分比
-    const submittedPercentage = computed(() => 
-      props.totalStudents > 0 ? Math.round((props.submittedCount / props.totalStudents) * 100) : 0
-    );
-    
-    // 计算未提交百分比
-    const pendingPercentage = computed(() => 100 - submittedPercentage.value);
-    
-    return {
-      pendingCount,
-      submittedPercentage,
-      pendingPercentage
-    };
+  submittedCount: {
+    type: Number,
+    required: true
   }
-};
+});
+
+// 计算未提交数量
+const pendingCount = computed(() => props.totalStudents - props.submittedCount);
+
+// 计算已提交百分比
+const submittedPercentage = computed(() =>
+  props.totalStudents > 0 ? Math.round((props.submittedCount / props.totalStudents) * 100) : 0
+);
+
+// 计算未提交百分比
+const pendingPercentage = computed(() => 100 - submittedPercentage.value);
 </script>
 
 <style scoped>
@@ -112,7 +102,7 @@ export default {
   .submission-stats {
     padding: 20px 15px;
   }
-  
+
   .stats-cards {
     flex-direction: column;
   }

@@ -5,16 +5,13 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'WelcomeSection',
-  props: {
-    currentDate: {
-      type: String,
-      required: true
-    }
+<script setup>
+defineProps({
+  currentDate: {
+    type: String,
+    required: true
   }
-};
+});
 </script>
 
 <style scoped>

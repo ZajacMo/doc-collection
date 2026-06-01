@@ -15,7 +15,15 @@ import { getCurrentUser } from '../services/userService.js';
 const routes = [
   {
     path: '/',
-    redirect: '/login'
+    redirect: () => {
+      const userInfo = getCurrentUser();
+      const token = localStorage.getItem('token');
+      if (userInfo && token) {
+        const role = userInfo.user?.role || userInfo.role;
+        return role === 'admin' ? '/admin' : '/home';
+      }
+      return '/login';
+    }
   },
   {
     path: '/login',

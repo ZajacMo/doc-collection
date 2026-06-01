@@ -36,9 +36,9 @@
       <el-table-column label="操作" fixed="right" align="center">
         <template #default="{ row }">
           <div v-if="row && row.id">
-            <el-button 
-              type="primary" 
-              size="small" 
+            <el-button
+              type="primary"
+              size="small"
               @click="goToDetail(row.id)"
             >
               详情
@@ -51,77 +51,58 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { formatDate } from "@/utils/date";
 import { CircleClose } from '@element-plus/icons-vue';
 
-export default {
-  name: 'RecentAssignmentsSection',
-  components: {
-    CircleClose
-  },
-  props: {
-    recentAssignments: {
-      type: Array,
-      required: true
-    }
-  },
-  setup(props, { emit }) {
-    // 格式化日期
-    const formatDate = (dateString) => {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-    };
-    
-    // 检查作业是否紧急（24小时内截止）
-    const isAssignmentUrgent = (deadline) => {
-      if (!deadline) return false;
-      const now = new Date();
-      const deadlineDate = new Date(deadline);
-      const diffMs = deadlineDate - now;
-      const diffHours = diffMs / (1000 * 60 * 60);
-      return diffHours > 0 && diffHours < 24;
-    };
-    
-    // 检查作业是否已过期
-    const isAssignmentExpired = (deadline) => {
-      if (!deadline) return false;
-      const now = new Date();
-      const deadlineDate = new Date(deadline);
-      return deadlineDate < now;
-    };
-    
-    // 获取作业状态标签配置的函数
-    const getStatusTag = (row) => {
-      if (!row) {
-        return { type: 'info', text: '-', key: 'empty' };
-      }
-      
-      if (row.status === 'submitted') {
-        return { type: 'success', text: '已提交', key: 'submitted' };
-      }
-      if (row.status === 'late') {
-        return { type: 'danger', text: '已逾期', key: 'late' };
-      }
-      if (row.deadline && isAssignmentUrgent(row.deadline)) {
-        return { type: 'warning', text: '未提交(紧急)', key: 'notSubmittedUrgent' };
-      }
-      return { type: 'info', text: '未提交', key: 'default' };
-    };
-    
-    // 跳转到作业详情
-    const goToDetail = (id) => {
-      emit('go-to-detail', id);
-    };
-    
-    return {
-      formatDate,
-      isAssignmentExpired,
-      isAssignmentUrgent,
-      getStatusTag,
-      goToDetail
-    };
+const props = defineProps({
+  recentAssignments: {
+    type: Array,
+    required: true
   }
+});
+
+const emit = defineEmits(['go-to-detail']);
+
+// 检查作业是否紧急（24小时内截止）
+const isAssignmentUrgent = (deadline) => {
+  if (!deadline) return false;
+  const now = new Date();
+  const deadlineDate = new Date(deadline);
+  const diffMs = deadlineDate - now;
+  const diffHours = diffMs / (1000 * 60 * 60);
+  return diffHours > 0 && diffHours < 24;
+};
+
+// 检查作业是否已过期
+const isAssignmentExpired = (deadline) => {
+  if (!deadline) return false;
+  const now = new Date();
+  const deadlineDate = new Date(deadline);
+  return deadlineDate < now;
+};
+
+// 获取作业状态标签配置的函数
+const getStatusTag = (row) => {
+  if (!row) {
+    return { type: 'info', text: '-', key: 'empty' };
+  }
+
+  if (row.status === 'submitted') {
+    return { type: 'success', text: '已提交', key: 'submitted' };
+  }
+  if (row.status === 'late') {
+    return { type: 'danger', text: '已逾期', key: 'late' };
+  }
+  if (row.deadline && isAssignmentUrgent(row.deadline)) {
+    return { type: 'warning', text: '未提交(紧急)', key: 'notSubmittedUrgent' };
+  }
+  return { type: 'info', text: '未提交', key: 'default' };
+};
+
+// 跳转到作业详情
+const goToDetail = (id) => {
+  emit('go-to-detail', id);
 };
 </script>
 
@@ -153,7 +134,7 @@ export default {
     padding: 20px 15px;
     width: 100%;
   }
-  
+
   .el-table {
     width: 100%;
     overflow-x: auto;

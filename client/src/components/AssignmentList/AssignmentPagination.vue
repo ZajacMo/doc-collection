@@ -12,54 +12,43 @@
   </div>
 </template>
 
-<script>
-import { defineComponent, ref } from 'vue';
+<script setup>
+import { ref } from 'vue';
 
-export default defineComponent({
-  name: 'AssignmentPagination',
-  props: {
-    initialCurrentPage: {
-      type: Number,
-      default: 1
-    },
-    initialPageSize: {
-      type: Number,
-      default: 10
-    },
-    total: {
-      type: Number,
-      default: 0
-    }
+const props = defineProps({
+  total: {
+    type: Number,
+    default: 0
   },
-  emits: ['page-change'],
-  setup(props, { emit }) {
-    const currentPage = ref(props.initialCurrentPage);
-    const pageSize = ref(props.initialPageSize);
-
-    const handleSizeChange = (size) => {
-      pageSize.value = size;
-      emit('page-change', {
-        currentPage: 1,
-        pageSize: size
-      });
-    };
-
-    const handleCurrentChange = (current) => {
-      currentPage.value = current;
-      emit('page-change', {
-        currentPage: current,
-        pageSize: pageSize.value
-      });
-    };
-
-    return {
-      currentPage,
-      pageSize,
-      handleSizeChange,
-      handleCurrentChange
-    };
+  initialCurrentPage: {
+    type: Number,
+    default: 1
+  },
+  initialPageSize: {
+    type: Number,
+    default: 10
   }
 });
+
+const emit = defineEmits(['page-change']);
+const currentPage = ref(props.initialCurrentPage);
+const pageSize = ref(props.initialPageSize);
+
+const handleSizeChange = (size) => {
+  pageSize.value = size;
+  emit('page-change', {
+    currentPage: 1,
+    pageSize: size
+  });
+};
+
+const handleCurrentChange = (current) => {
+  currentPage.value = current;
+  emit('page-change', {
+    currentPage: current,
+    pageSize: pageSize.value
+  });
+};
 </script>
 
 <style scoped>

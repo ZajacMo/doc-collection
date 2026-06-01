@@ -33,15 +33,15 @@ const handleMenuSelect = (index) => {
     >
       <el-menu-item index="1">
         <el-icon><House /></el-icon>
-        <span slot="title">首页</span>
+        <template #title><span>首页</span></template>
       </el-menu-item>
       <el-menu-item index="2">
         <el-icon><DocumentCopy /></el-icon>
-        <span slot="title">作业</span>
+        <template #title><span>作业</span></template>
       </el-menu-item>
       <el-menu-item index="3" v-show="userInfo?.user?.role === 'admin' || userInfo?.role === 'admin'">
         <el-icon><Management /></el-icon>
-        <span slot="title">管理</span>
+        <template #title><span>管理</span></template>
       </el-menu-item>
     </el-menu>
   </el-aside>

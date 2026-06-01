@@ -1,7 +1,7 @@
 <template>
   <div class="assignment-header">
     <h1 class="assignment-title">{{ assignment.title }}</h1>
-    <el-tag 
+    <el-tag
       :type="statusType"
       size="large"
     >
@@ -10,48 +10,47 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'AssignmentHeader',
-  props: {
-    assignment: {
-      type: Object,
-      required: true
-    },
-    status: {
-      type: String,
-      required: true,
-      validator: (value) => {
-        // 验证状态值是否有效
-        return ['submitted', 'late', 'expired', 'urgent', 'in_progress'].includes(value);
-      }
-    }
+<script setup>
+import { computed } from 'vue';
+
+const props = defineProps({
+  assignment: {
+    type: Object,
+    required: true
   },
-  computed: {
-    // 根据状态计算标签类型
-    statusType() {
-      const typeMap = {
-        'submitted': 'success',
-        'late': 'danger',
-        'expired': 'success',
-        'urgent': 'warning',
-        'in_progress': 'info'
-      };
-      return typeMap[this.status] || 'info';
-    },
-    // 根据状态计算显示文本
-    statusText() {
-      const textMap = {
-        'submitted': '已提交',
-        'late': '已逾期',
-        'expired': '已完结',
-        'urgent': '紧急',
-        'in_progress': '进行中'
-      };
-      return textMap[this.status] || '进行中';
+  status: {
+    type: String,
+    required: true,
+    validator: (value) => {
+      // 验证状态值是否有效
+      return ['submitted', 'late', 'expired', 'urgent', 'in_progress'].includes(value);
     }
   }
-};
+});
+
+// 根据状态计算标签类型
+const statusType = computed(() => {
+  const typeMap = {
+    'submitted': 'success',
+    'late': 'danger',
+    'expired': 'success',
+    'urgent': 'warning',
+    'in_progress': 'info'
+  };
+  return typeMap[props.status] || 'info';
+});
+
+// 根据状态计算显示文本
+const statusText = computed(() => {
+  const textMap = {
+    'submitted': '已提交',
+    'late': '已逾期',
+    'expired': '已完结',
+    'urgent': '紧急',
+    'in_progress': '进行中'
+  };
+  return textMap[props.status] || '进行中';
+});
 </script>
 
 <style scoped>
