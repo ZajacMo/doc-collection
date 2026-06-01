@@ -194,7 +194,7 @@ onMounted(() => {
 
 <style scoped>
 .home-container {
-  background-color: #f5f7fa;
+  background-color: var(--bg-primary);
   padding: 20px;
   min-height: calc(100vh - 60px);
   width: 100%;
