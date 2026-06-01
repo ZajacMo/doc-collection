@@ -21,5 +21,13 @@ router.put('/:id', userController.updateUser);
 // 删除用户
 router.delete('/:id', userController.deleteUser);
 
+// 批量创建用户
+router.post('/batch', userController.batchCreateUsers);
+
+// 修改密码
+router.post('/:id/change-password', userController.changePassword);
+
+// 重置密码（管理员）
+router.post('/:id/reset-password', userController.resetPassword);
 
 module.exports = router;

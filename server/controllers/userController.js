@@ -177,24 +177,89 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
+// 批量创建用户
+exports.batchCreateUsers = async (req, res) => {
+  try {
+    const { users } = req.body;
+
+    if (!Array.isArray(users) || users.length === 0) {
+      return res.status(400).json({ message: '用户数据不能为空' });
+    }
+
+    const results = {
+      successCount: 0,
+      failedCount: 0,
+      errors: []
+    };
+
+    // 获取当前最大ID
+    const maxIdRow = await getOne('SELECT MAX(CAST(id AS INTEGER)) as maxId FROM users');
+    let nextId = (maxIdRow?.maxId || 0) + 1;
+
+    for (const userData of users) {
+      const { studentId, name, role = 'student', className = '', major = '', email = '' } = userData;
+
+      // 校验必填字段
+      if (!studentId || !name) {
+        results.failedCount++;
+        results.errors.push({ studentId: studentId || '', reason: '缺少学号或姓名' });
+        continue;
+      }
+
+      // 检查学号是否已存在
+      const existingUser = await getOne('SELECT id FROM users WHERE studentId = ?', [studentId]);
+      if (existingUser) {
+        results.failedCount++;
+        results.errors.push({ studentId, reason: '学号已存在' });
+        continue;
+      }
+
+      try {
+        await run(
+          'INSERT INTO users (id, studentId, name, role, className, major, email) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [nextId.toString(), studentId, name, role, className, major, email]
+        );
+        nextId++;
+        results.successCount++;
+      } catch (error) {
+        results.failedCount++;
+        results.errors.push({ studentId, reason: error.message || '插入失败' });
+      }
+    }
+
+    res.json({
+      message: `批量导入完成，成功 ${results.successCount} 条，失败 ${results.failedCount} 条`,
+      ...results
+    });
+  } catch (error) {
+    console.error('批量创建用户失败:', error);
+    res.status(500).json({ message: '批量创建用户失败', error: error.message });
+  }
+};
+
 // 用户登录
 exports.loginUser = async (req, res) => {
   try {
     const { studentId, password } = req.body;
-    
+
     // 查找用户
     const user = await getOne('SELECT * FROM users WHERE studentId = ?', [studentId]);
-    // console.log('查询到的用户:', user);
-    // await new Promise(resolve => setTimeout(resolve, 5000));
 
     if (!user) {
       return res.status(401).json({ message: '用户不存在' });
     }
-    
-    // 这里简化处理，实际应该使用密码哈希验证
-    // 暂时使用学号作为密码
-    if (password === user.studentId) {
 
+    // 验证密码：
+    // 1. 如果用户已设置密码（password 字段不为空），用密码验证
+    // 2. 如果用户未设置密码（兼容旧数据），用学号作为默认密码
+    let isValid = false;
+    if (user.password) {
+      isValid = password === user.password;
+    } else {
+      isValid = password === user.studentId;
+    }
+
+    if (isValid) {
       res.json({
         message: '登录成功',
         user: {
@@ -210,5 +275,62 @@ exports.loginUser = async (req, res) => {
   } catch (error) {
     console.error('登录错误:', error);
     res.status(500).json({ message: '登录失败', error: error.message });
+  }
+};
+
+// 修改密码
+exports.changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.params.id;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ message: '旧密码和新密码不能为空' });
+    }
+
+    if (newPassword.length < 6 || newPassword.length > 20) {
+      return res.status(400).json({ message: '新密码长度需在 6 到 20 个字符之间' });
+    }
+
+    // 查找用户
+    const user = await getOne('SELECT * FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ message: '用户不存在' });
+    }
+
+    // 验证旧密码
+    const currentPassword = user.password || user.studentId;
+    if (oldPassword !== currentPassword) {
+      return res.status(401).json({ message: '旧密码错误' });
+    }
+
+    // 更新密码
+    await run('UPDATE users SET password = ? WHERE id = ?', [newPassword, userId]);
+
+    res.json({ message: '密码修改成功' });
+  } catch (error) {
+    console.error('修改密码错误:', error);
+    res.status(500).json({ message: '修改密码失败', error: error.message });
+  }
+};
+
+// 重置密码（管理员功能）
+exports.resetPassword = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // 查找用户
+    const user = await getOne('SELECT studentId FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(404).json({ message: '用户不存在' });
+    }
+
+    // 重置密码为学号
+    await run('UPDATE users SET password = NULL WHERE id = ?', [userId]);
+
+    res.json({ message: '密码重置成功', defaultPassword: user.studentId });
+  } catch (error) {
+    console.error('重置密码错误:', error);
+    res.status(500).json({ message: '重置密码失败', error: error.message });
   }
 };

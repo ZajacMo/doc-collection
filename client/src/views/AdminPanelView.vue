@@ -21,12 +21,13 @@
 
       <!-- 用户管理 -->
       <el-tab-pane label="用户管理" name="users">
-        <user-management 
+        <user-management
           :all-users="allUsers"
           @show-import-dialog="importUserDialogVisible = true"
           @show-add-dialog="addUserDialogVisible = true"
           @edit-user="editUser"
           @delete-user="deleteUser"
+          @reset-password="resetPassword"
         />
       </el-tab-pane>
 
@@ -69,7 +70,7 @@ import UserDropdown from '../components/UserDropdown.vue';
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { getCurrentUser, logoutUser, getAllUsers, deleteUser as deleteUserAPI } from '../services/userService';
+import { getCurrentUser, logoutUser, getAllUsers, deleteUser as deleteUserAPI, resetPassword as resetPasswordAPI } from '../services/userService';
 import { getAllAssignments, deleteAssignment as deleteAssignmentAPI } from '../services/assignmentService';
 import { getAllSubmissions, deleteSubmission as deleteSubmissionAPI, downloadFile, handleFileDownload } from '../services/submissionService';
 
@@ -231,7 +232,7 @@ export default {
     };
     
     // 删除用户
-    const deleteUser = async (studentId, userName) => {
+    const deleteUser = async (id, userName) => {
       try {
         await ElMessageBox.confirm(
           `确定要删除用户「${userName}」吗？删除后将无法恢复。`,
@@ -242,12 +243,12 @@ export default {
             type: 'warning'
           }
         );
-        
+
         // 调用删除接口
-        await deleteUserAPI(studentId);
-        
+        await deleteUserAPI(id);
+
         ElMessage.success('用户删除成功');
-        
+
         // 重新加载数据
         loadData();
       } catch (error) {
@@ -255,6 +256,34 @@ export default {
         if (error !== 'cancel') {
           ElMessage.error(error.response?.data?.message || '用户删除失败');
           console.error('用户删除失败:', error);
+        }
+      }
+    };
+
+    // 重置密码
+    const resetPassword = async (id, userName, studentId) => {
+      try {
+        await ElMessageBox.confirm(
+          `确定要重置用户「${userName}」的密码吗？重置后密码将恢复为学号「${studentId}」。`,
+          '确认重置密码',
+          {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }
+        );
+
+        // 调用重置密码接口
+        const result = await resetPasswordAPI(id);
+
+        ElMessage.success(`密码重置成功，默认密码为：${result.defaultPassword || studentId}`);
+
+        // 重新加载数据
+        loadData();
+      } catch (error) {
+        if (error !== 'cancel') {
+          ElMessage.error(error.response?.data?.message || '密码重置失败');
+          console.error('密码重置失败:', error);
         }
       }
     };
@@ -361,6 +390,7 @@ export default {
       goToAssignmentDetail,
       editUser,
       deleteUser,
+      resetPassword,
       deleteAssignment,
       downloadSubmissionFile,
       deleteSubmission

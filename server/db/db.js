@@ -45,6 +45,45 @@ const getDb = () => {
 };
 
 /**
+ * 确保数据库 schema 是最新的
+ * 检查并添加必要的列（如 password）
+ */
+const ensureSchema = () => {
+  return new Promise((resolve, reject) => {
+    try {
+      const db = getDb();
+
+      // 检查 users 表是否有 password 列
+      db.all("PRAGMA table_info(users)", (err, columns) => {
+        if (err) {
+          console.error('检查表结构失败:', err.message);
+          reject(err);
+          return;
+        }
+
+        const hasPassword = columns.some(col => col.name === 'password');
+        if (!hasPassword) {
+          db.run('ALTER TABLE users ADD COLUMN password TEXT', (alterErr) => {
+            if (alterErr) {
+              console.error('添加 password 列失败:', alterErr.message);
+              reject(alterErr);
+              return;
+            }
+            console.log('成功添加 password 列到 users 表');
+            resolve();
+          });
+        } else {
+          resolve();
+        }
+      });
+    } catch (error) {
+      console.error('确保 schema 失败:', error);
+      reject(error);
+    }
+  });
+};
+
+/**
  * 关闭数据库连接
  */
 const closeDb = () => {
@@ -63,5 +102,6 @@ const closeDb = () => {
 module.exports = {
   initDatabase,
   getDb,
-  closeDb
+  closeDb,
+  ensureSchema
 };

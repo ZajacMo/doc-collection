@@ -35,7 +35,7 @@
       <el-table-column type="index" label="序号" width="80"></el-table-column>
       <el-table-column prop="studentId" label="学号" width="120"></el-table-column>
       <el-table-column prop="name" label="姓名" width="120"></el-table-column>
-      <el-table-column prop="class" label="班级" width="120"></el-table-column>
+      <el-table-column prop="className" label="班级" width="120"></el-table-column>
       <el-table-column prop="role" label="角色" width="100">
         <template #default="{ row }">
           <el-tag 
@@ -58,21 +58,29 @@
           {{ row && row.createTime ? formatDate(row.createTime) : '-' }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
           <template v-if="row">
-            <el-button 
-              type="primary" 
-              size="small" 
+            <el-button
+              type="primary"
+              size="small"
               @click="$emit('edit-user', row)"
             >
               编辑
             </el-button>
-            <el-button 
+            <el-button
               v-if="row.role !== 'admin'"
-              type="danger" 
-              size="small" 
-              @click="$emit('delete-user', row.studentId, row.name)"
+              type="warning"
+              size="small"
+              @click="$emit('reset-password', row.id, row.name, row.studentId)"
+            >
+              重置密码
+            </el-button>
+            <el-button
+              v-if="row.role !== 'admin'"
+              type="danger"
+              size="small"
+              @click="$emit('delete-user', row.id, row.name)"
             >
               删除
             </el-button>
@@ -113,7 +121,7 @@ export default {
       default: () => []
     }
   },
-  emits: ['show-import-dialog', 'show-add-dialog', 'edit-user', 'delete-user'],
+  emits: ['show-import-dialog', 'show-add-dialog', 'edit-user', 'delete-user', 'reset-password'],
   setup(props, { emit }) {
     const searchKeyword = ref('');
     const currentPage = ref(1);
@@ -128,10 +136,10 @@ export default {
       
       if (searchKeyword.value) {
         const keyword = searchKeyword.value.toLowerCase();
-        result = result.filter(user => 
+        result = result.filter(user =>
           user.studentId.toLowerCase().includes(keyword) ||
           user.name.toLowerCase().includes(keyword) ||
-          user.class.toLowerCase().includes(keyword)
+          user.className.toLowerCase().includes(keyword)
         );
       }
       
