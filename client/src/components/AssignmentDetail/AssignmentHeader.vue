@@ -1,9 +1,15 @@
 <template>
   <div class="assignment-header">
-    <h1 class="assignment-title">{{ assignment.title }}</h1>
+    <div class="title-section">
+      <el-icon :size="20" class="header-icon"><Document /></el-icon>
+      <h1 class="assignment-title">{{ assignment.title }}</h1>
+    </div>
     <el-tag
       :type="statusType"
       size="large"
+      effect="light"
+      class="status-tag"
+      round
     >
       {{ statusText }}
     </el-tag>
@@ -12,6 +18,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { Document } from '@element-plus/icons-vue';
 
 const props = defineProps({
   assignment: {
@@ -22,7 +29,6 @@ const props = defineProps({
     type: String,
     required: true,
     validator: (value) => {
-      // 验证状态值是否有效
       return ['submitted', 'late', 'expired', 'urgent', 'in_progress'].includes(value);
     }
   }
@@ -33,7 +39,7 @@ const statusType = computed(() => {
   const typeMap = {
     'submitted': 'success',
     'late': 'danger',
-    'expired': 'success',
+    'expired': 'info',
     'urgent': 'warning',
     'in_progress': 'info'
   };
@@ -45,7 +51,7 @@ const statusText = computed(() => {
   const textMap = {
     'submitted': '已提交',
     'late': '已逾期',
-    'expired': '已完结',
+    'expired': '已截止',
     'urgent': '紧急',
     'in_progress': '进行中'
   };
@@ -57,26 +63,41 @@ const statusText = computed(() => {
 .assignment-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 30px;
+  align-items: center;
+  margin-bottom: 24px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.header-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
 }
 
 .assignment-title {
-  font-size: 24px;
-  font-weight: bold;
-  color: #303133;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
   margin: 0;
-  flex: 1;
-  margin-right: 20px;
+}
+
+.status-tag {
+  font-weight: 600;
+  font-size: 14px;
 }
 
 @media (max-width: 768px) {
   .assignment-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 15px;
+    gap: 12px;
   }
 }
 </style>

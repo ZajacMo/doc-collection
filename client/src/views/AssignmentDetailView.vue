@@ -403,49 +403,29 @@ onMounted(() => {
 
 <style scoped>
 .assignment-detail-container {
-  background-color: #f5f7fa;
+  background-color: var(--bg-primary);
   padding: 20px;
   width: 100%;
-  min-height: calc(100vh - 60px); /* 考虑Header高度 */
+  min-height: calc(100vh - 60px);
   overflow: auto;
 }
 
-/* 新增：提交表单相关样式 */
 .submit-form-container {
   max-width: 800px;
   margin: 20px auto 0;
 }
 
-.assignment-title-section {
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.assignment-title-section h1 {
-  color: #303133;
-  margin: 0 0 20px 0;
-  font-size: 24px;
-}
-
-.expired-warning {
-  margin-top: 20px;
-}
-
-.urgent-warning {
-  margin-top: 20px;
-}
-
-.submit-form-card {
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
 .back-button-container {
   margin-bottom: 20px;
+}
+
+.back-button-container :deep(.el-button) {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.back-button-container :deep(.el-button:hover) {
+  color: var(--color-primary);
 }
 
 .loading-container {
@@ -454,181 +434,68 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   height: 400px;
+  color: var(--text-tertiary);
+}
+
+.loading-container .el-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  color: var(--color-primary);
 }
 
 .assignment-detail-card {
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
+  background-color: var(--bg-card);
+  padding: 28px;
+  border-radius: var(--radius-md);
   margin-bottom: 20px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
 }
-
-.assignment-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #e4e7ed;
-}
-
-.assignment-title {
-  font-size: 24px;
-  font-weight: bold;
-  color: #303133;
-  margin: 0;
-  flex: 1;
-  margin-right: 20px;
-}
-
-.assignment-info {
-  margin-bottom: 30px;
-}
-
-.info-row {
-  display: flex;
-  margin-bottom: 15px;
-  align-items: center;
-}
-
-.info-label {
-  width: 100px;
-  color: #606266;
-  font-weight: bold;
-}
-
-.info-value {
-  color: #303133;
-  font-size: 15px;
-}
-
-.countdown {
-  font-size: 13px;
-  color: #909399;
-  margin-left: 10px;
-}
-
-.assignment-description {
-  margin-bottom: 30px;
-}
-
-.assignment-description h3 {
-  color: #303133;
-  margin-bottom: 15px;
-  font-size: 18px;
-}
-
-.assignment-description p {
-  color: #606266;
-  line-height: 1.8;
-  font-size: 15px;
-  white-space: pre-wrap;
-}
-
 
 .action-buttons {
   display: flex;
   gap: 10px;
-}
-
-.submission-stats {
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.submission-stats h3 {
-  color: #303133;
-  margin-bottom: 20px;
-  font-size: 18px;
-}
-
-.stats-cards {
-  display: flex;
-  gap: 20px;
-}
-
-.stat-card {
-  flex: 1;
-  min-width: 200px;
-}
-
-.stat-content {
-  text-align: center;
-}
-
-.stat-number {
-  font-size: 36px;
-  font-weight: bold;
-  color: #1890ff;
-  margin-bottom: 10px;
-}
-
-.stat-label {
-  font-size: 16px;
-  color: #606266;
-  margin-bottom: 5px;
-}
-
-.stat-percentage {
-  font-size: 14px;
-  color: #909399;
+  flex-wrap: wrap;
 }
 
 .submission-list {
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
-}
-
-.submission-list h3 {
-  color: #303133;
-  margin-bottom: 20px;
-  font-size: 18px;
+  background-color: var(--bg-card);
+  padding: 24px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
 }
 
 .text-danger {
-  color: #f56c6c;
+  color: var(--color-danger);
 }
 
 .text-warning {
-  color: #e6a23c;
+  color: var(--color-warning);
 }
 
 .form-tip {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
   margin-top: 5px;
 }
 
 /* 响应式调整 */
 @media (max-width: 768px) {
   .assignment-detail-card,
-  .submission-stats,
   .submission-list {
     padding: 20px 15px;
   }
-  
-  .assignment-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
-  
-  .stats-cards {
-    grid-template-columns: 1fr;
-  }
-  
+
   .action-buttons {
     flex-direction: column;
     gap: 10px;
   }
-  
+
   .action-buttons .el-button {
     width: 100%;
   }
-  
+
   .el-table {
     overflow-x: auto;
   }

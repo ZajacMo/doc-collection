@@ -76,7 +76,7 @@
           <template #tip>
             <div class="el-upload__tip">
               支持的文件大小不超过20MB
-              <div style="margin-top:6px;color:#606266;">
+              <div style="margin-top:6px;color: var(--text-secondary);">
                 允许类型：
                 <template v-if="allowedFileTypes && allowedFileTypes.length > 0">
                   {{ allowedFileTypes.join(', ') }}
@@ -250,7 +250,7 @@ onMounted(() => {
 
 .form-tip {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-tertiary);
   margin-top: 5px;
 }
 </style>

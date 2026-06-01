@@ -101,13 +101,13 @@ const confirmDelete = (submissionId) => {
 
 <style scoped>
 .submission-list {
-  background-color: white;
+  background-color: var(--bg-card);
   padding: 30px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .submission-list h3 {
-  color: #303133;
+  color: var(--text-primary);
   margin-bottom: 20px;
   font-size: 18px;
 }
