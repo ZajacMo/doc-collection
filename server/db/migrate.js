@@ -1,7 +1,8 @@
 // 数据库迁移脚本
 const fs = require('fs');
 const path = require('path');
-const XLSX = require('xlsx');
+const bcrypt = require('bcryptjs');
+const XLSX = require('@e965/xlsx');
 const { initDatabase, getDb, closeDb } = require('./db');
 
 // 包装db.run为Promise版本
@@ -42,16 +43,30 @@ const createTables = async () => {
   await runQuery(db, 'PRAGMA foreign_keys = OFF');
   
   try {
-    // 删除已存在的表（按依赖关系的逆序）
-    await runQuery(db, 'DROP TABLE IF EXISTS submissions');
-    await runQuery(db, 'DROP TABLE IF EXISTS assignments');
-    await runQuery(db, 'DROP TABLE IF EXISTS users');
-    
-    console.log('旧表删除成功');
-    
-    // 创建用户表
+    // 创建 migrations 表来记录迁移版本
     await runQuery(db, `
-      CREATE TABLE users (
+      CREATE TABLE IF NOT EXISTS migrations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        appliedAt TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 检查此迁移是否已执行
+    const migrationExists = await new Promise((resolve) => {
+      db.get('SELECT 1 FROM migrations WHERE name = ?', ['init_v1'], (err, row) => {
+        resolve(!!row);
+      });
+    });
+
+    if (migrationExists) {
+      console.log('迁移 init_v1 已执行，跳过表创建');
+      return;
+    }
+
+    // 仅在表不存在时创建（保留已有数据）
+    await runQuery(db, `
+      CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         studentId TEXT NOT NULL UNIQUE,
         name TEXT NOT NULL,
@@ -59,13 +74,13 @@ const createTables = async () => {
         className TEXT,
         major TEXT,
         email TEXT,
+        password TEXT,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    
-    // 创建作业表
+
     await runQuery(db, `
-      CREATE TABLE assignments (
+      CREATE TABLE IF NOT EXISTS assignments (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
@@ -73,13 +88,13 @@ const createTables = async () => {
         createTime TEXT NOT NULL,
         updateTime TEXT NOT NULL,
         fileTypes TEXT NOT NULL,
-        namingRule TEXT
+        namingRule TEXT,
+        relativeStudents TEXT
       );
     `);
-    
-    // 创建提交表
+
     await runQuery(db, `
-      CREATE TABLE submissions (
+      CREATE TABLE IF NOT EXISTS submissions (
         id TEXT PRIMARY KEY,
         studentId TEXT NOT NULL,
         assignmentId TEXT NOT NULL,
@@ -91,7 +106,10 @@ const createTables = async () => {
         status TEXT NOT NULL DEFAULT 'submitted'
       );
     `);
-    
+
+    // 记录迁移已执行
+    await runQuery(db, `INSERT INTO migrations (name) VALUES ('init_v1')`);
+
     console.log('数据库表创建成功');
   } catch (error) {
     console.error('创建表失败:', error);
@@ -111,41 +129,43 @@ const importUsersFromExcel = async () => {
   const excelPath = path.join(__dirname, '../data/名单.xls');
   
   try {
-    // 插入默认用户
+    // 插入默认用户（默认密码为学号）
     const defaultUsers = [
       { id: '1', studentId: 'admin', name: '管理员', role: 'admin' },
       { id: '2', studentId: '2023001', name: '张三', role: 'student' },
       { id: '3', studentId: '2023002', name: '李四', role: 'student' },
       { id: '4', studentId: '2023003', name: '王五', role: 'student' }
     ];
-    
+
     for (const user of defaultUsers) {
+      const hashedPassword = await bcrypt.hash(user.studentId, 10);
       await runQuery(
         db,
-        `INSERT OR IGNORE INTO users (id, studentId, name, role) VALUES (?, ?, ?, ?)`,
-        [user.id, user.studentId, user.name, user.role]
+        `INSERT OR IGNORE INTO users (id, studentId, name, role, password) VALUES (?, ?, ?, ?, ?)`,
+        [user.id, user.studentId, user.name, user.role, hashedPassword]
       );
     }
-    
+
     if (fs.existsSync(excelPath)) {
       const workbook = XLSX.readFile(excelPath);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(worksheet);
-      
+
       let count = 0;
       for (const [index, row] of data.entries()) {
         const userId = (defaultUsers.length + index + 1).toString();
         const studentId = row['学号'] || `student${defaultUsers.length + index + 1}`;
         const name = row['姓名'] || `User${defaultUsers.length + index + 1}`;
-        
+        const hashedPassword = await bcrypt.hash(studentId, 10);
+
         await runQuery(
           db,
-          `INSERT OR IGNORE INTO users (id, studentId, name, role, className, major, email) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [userId, studentId, name, 'student', row['班级'] || '', row['专业'] || '', row['邮箱'] || '']
+          `INSERT OR IGNORE INTO users (id, studentId, name, role, className, major, email, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [userId, studentId, name, 'student', row['班级'] || '', row['专业'] || '', row['邮箱'] || '', hashedPassword]
         );
         count++;
       }
-      
+
       console.log(`成功从Excel导入了 ${count} 个用户数据`);
     } else {
       console.log('Excel文件不存在，仅使用默认用户数据');

@@ -1,4 +1,6 @@
 // 用户控制器
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { getDb } = require('../db/db');
 
 /**
@@ -55,7 +57,7 @@ const getOne = async (sql, params = []) => {
 // 获取所有用户
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await query('SELECT * FROM users');
+    const users = await query('SELECT id, studentId, name, role, className, major, email, createdAt FROM users');
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: '获取用户列表失败', error: error.message });
@@ -79,17 +81,34 @@ exports.getUserById = async (req, res) => {
 // 创建用户
 exports.createUser = async (req, res) => {
   try {
+    // 确保 password 列存在（兼容已有数据库）
+    try {
+      const db = getDb();
+      await new Promise((resolve) => db.run('ALTER TABLE users ADD COLUMN password TEXT', () => resolve()));
+    } catch {
+      // 列已存在时忽略
+    }
+
     // 获取最大ID
     const maxIdRow = await getOne('SELECT MAX(CAST(id AS INTEGER)) as maxId FROM users');
     const newId = (maxIdRow?.maxId || 0) + 1;
-    
-    const { studentId, name, role = 'student', className = '', major = '', email = '' } = req.body;
-    
+
+    const { studentId, name, role = 'student', className = '', major = '', email = '', password } = req.body;
+    if (!studentId || typeof studentId !== 'string' || studentId.trim() === '') {
+      return res.status(400).json({ message: '学号不能为空' });
+    }
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({ message: '姓名不能为空' });
+    }
+    // 如果没有提供密码，默认使用学号；始终进行 bcrypt 哈希存储
+    const plainPassword = password || studentId;
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
     await run(
-      'INSERT INTO users (id, studentId, name, role, className, major, email) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [newId.toString(), studentId, name, role, className, major, email]
+      'INSERT INTO users (id, studentId, name, role, className, major, email, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [newId.toString(), studentId, name, role, className, major, email, hashedPassword]
     );
-    
+
     const newUser = {
       id: newId.toString(),
       studentId,
@@ -99,7 +118,7 @@ exports.createUser = async (req, res) => {
       major,
       email
     };
-    
+
     res.status(201).json(newUser);
   } catch (error) {
     if (error.code === 'SQLITE_CONSTRAINT') {
@@ -113,12 +132,12 @@ exports.createUser = async (req, res) => {
 // 更新用户
 exports.updateUser = async (req, res) => {
   try {
-    const { studentId, name, role, className, major, email } = req.body;
-    
+    const { studentId, name, role, className, major, email, password } = req.body;
+
     // 构建更新字段
     const updates = [];
     const params = [];
-    
+
     if (studentId !== undefined) {
       updates.push('studentId = ?');
       params.push(studentId);
@@ -143,15 +162,23 @@ exports.updateUser = async (req, res) => {
       updates.push('email = ?');
       params.push(email);
     }
-    
+    if (password !== undefined) {
+      updates.push('password = ?');
+      params.push(await bcrypt.hash(password, 10));
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ message: '没有要更新的字段' });
+    }
+
     // 添加ID参数
     params.push(req.params.id);
-    
+
     const result = await run(
       `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
       params
     );
-    
+
     if (result.changes > 0) {
       const updatedUser = await getOne('SELECT * FROM users WHERE id = ?', [req.params.id]);
       res.json(updatedUser);
@@ -190,13 +217,24 @@ exports.loginUser = async (req, res) => {
     if (!user) {
       return res.status(401).json({ message: '用户不存在' });
     }
-    
-    // 这里简化处理，实际应该使用密码哈希验证
-    // 暂时使用学号作为密码
-    if (password === user.studentId) {
 
+    // 密码验证：优先使用 bcrypt 哈希，兼容无 password 字段的旧用户
+    let isPasswordValid = false;
+    if (user.password) {
+      isPasswordValid = await bcrypt.compare(password, user.password);
+    } else {
+      isPasswordValid = password === user.studentId;
+    }
+
+    if (isPasswordValid) {
+      const token = jwt.sign(
+        { id: user.id, studentId: user.studentId, name: user.name, role: user.role },
+        process.env.JWT_SECRET || 'fallback_secret',
+        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      );
       res.json({
         message: '登录成功',
+        token,
         user: {
           id: user.id,
           studentId: user.studentId,
