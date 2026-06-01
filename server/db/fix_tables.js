@@ -9,7 +9,28 @@ async function fixTables() {
     
     console.log('数据库连接成功');
     
-    // 检查并创建assignments表
+    // 检查并创建users表（与migrate.js保持一致）
+    await new Promise((resolve, reject) => {
+      db.run(
+        `CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          studentId TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'student',
+          className TEXT,
+          major TEXT,
+          email TEXT,
+          password TEXT,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        );`,
+        (err) => {
+          if (err) { reject(err); }
+          else { console.log('已确保users表存在'); resolve(); }
+        }
+      );
+    });
+
+    // 检查并创建assignments表（与migrate.js保持一致）
     await new Promise((resolve, reject) => {
       db.run(
         `CREATE TABLE IF NOT EXISTS assignments (
@@ -19,21 +40,18 @@ async function fixTables() {
           deadline TEXT NOT NULL,
           createTime TEXT NOT NULL,
           updateTime TEXT NOT NULL,
-          namingRule TEXT NOT NULL,
-          fileTypes TEXT NOT NULL
+          fileTypes TEXT NOT NULL,
+          namingRule TEXT,
+          relativeStudents TEXT
         );`,
         (err) => {
-          if (err) {
-            reject(err);
-          } else {
-            console.log('已确保assignments表存在');
-            resolve();
-          }
+          if (err) { reject(err); }
+          else { console.log('已确保assignments表存在'); resolve(); }
         }
       );
     });
-    
-    // 检查并创建submissions表
+
+    // 检查并创建submissions表（与migrate.js保持一致）
     await new Promise((resolve, reject) => {
       db.run(
         `CREATE TABLE IF NOT EXISTS submissions (
@@ -48,12 +66,8 @@ async function fixTables() {
           status TEXT NOT NULL DEFAULT 'submitted'
         );`,
         (err) => {
-          if (err) {
-            reject(err);
-          } else {
-            console.log('已确保submissions表存在');
-            resolve();
-          }
+          if (err) { reject(err); }
+          else { console.log('已确保submissions表存在'); resolve(); }
         }
       );
     });

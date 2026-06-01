@@ -48,16 +48,21 @@ const getDb = () => {
  * 关闭数据库连接
  */
 const closeDb = () => {
-  if (db) {
+  return new Promise((resolve) => {
+    if (!db) {
+      resolve();
+      return;
+    }
     db.close((err) => {
       if (err) {
         console.error('关闭数据库连接失败:', err.message);
       } else {
         console.log('数据库连接已关闭');
-        db = null;
       }
+      db = null;
+      resolve();
     });
-  }
+  });
 };
 
 module.exports = {
