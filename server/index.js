@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 // 数据库连接模块
-const { initDatabase, closeDb } = require(process.env.DB_PATH || './db/db');
+const { initDatabase, closeDb } = require('./db/db');
 
 // 创建Express应用
 const app = express();
@@ -16,10 +16,21 @@ const PORT = Number(process.env.PORT) || 3001;
 const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
 
 // 中间件配置
-app.use(cors());
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:5173', 'http://localhost:80'];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 // 增加请求体大小限制为20MB，与MAX_FILE_SIZE保持一致
-app.use(express.json({ limit: '20mb' }));
-app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+const jsonLimit = process.env.MAX_FILE_SIZE ? `${parseInt(process.env.MAX_FILE_SIZE)}b` : '20mb';
+app.use(express.json({ limit: jsonLimit }));
+app.use(express.urlencoded({ extended: true, limit: jsonLimit }));
 
 // 静态文件服务 - 用于提供文件下载
     app.use('/uploads', express.static(path.join(__dirname, UPLOAD_DIR)));
@@ -41,12 +52,27 @@ async function startServer() {
     await initDatabase();
     console.log('数据库初始化完成');
     
+    // 鉴权中间件：验证 JWT 并注入 req.user
+    const jwt = require('jsonwebtoken');
+    app.use(async (req, res, next) => {
+      try {
+        const auth = req.headers.authorization || '';
+        const token = auth.startsWith('Bearer ') ? auth.substring(7) : '';
+        if (!token) return next();
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+        req.user = decoded;
+        next();
+      } catch {
+        next();
+      }
+    });
+
     // 路由
     const userRoutes = require('./routes/users');
     const assignmentRoutes = require('./routes/assignments');
     const submissionRoutes = require('./routes/submissions');
     const uploadRoutes = require('./controllers/uploadController'); // 直接使用上传控制器作为路由
-    
+
     app.use('/api/users', userRoutes);
     app.use('/api/assignments', assignmentRoutes);
     app.use('/api/submissions', submissionRoutes);
@@ -156,21 +182,3 @@ startServer();
 
 // 导出app供测试使用
 module.exports = app;
-// 简易鉴权中间件：从 Authorization 解析用户并注入 req.user
-app.use(async (req, res, next) => {
-  try {
-    const auth = req.headers.authorization || '';
-    const token = auth.startsWith('Bearer ') ? auth.substring(7) : '';
-    if (!token) return next();
-    const db = await initDatabase().then(() => require('./db/db').getDb());
-    await new Promise((resolve) => setImmediate(resolve));
-    db.get('SELECT id, studentId, name, role FROM users WHERE id = ?', [token], (err, row) => {
-      if (!err && row) {
-        req.user = row;
-      }
-      next();
-    });
-  } catch {
-    next();
-  }
-});
