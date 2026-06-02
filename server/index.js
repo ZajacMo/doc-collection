@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 // 数据库连接模块
 const { initDatabase, closeDb, ensureSchema } = require(process.env.DB_PATH || './db/db');
@@ -15,16 +16,35 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
 
-// 中间件配置
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:5173', 'http://localhost:80'];
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+// 自动获取本机所有非回环 IPv4 地址（局域网/公网）
+function getLocalIPs() {
+  const ips = new Set();
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        ips.add(`http://${iface.address}`);
+        ips.add(`http://${iface.address}:5173`);
+      }
     }
-  },
+  }
+  return Array.from(ips);
+}
+const autoIPs = getLocalIPs();
+
+// 中间件配置
+const defaultOrigins = ['http://localhost:5173', 'http://localhost', 'http://localhost:80', 'http://127.0.0.1', 'http://127.0.0.1:5173'];
+const envOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
+const allowedOrigins = [...new Set([...defaultOrigins, ...autoIPs, ...envOrigins])];
+
+if (autoIPs.length) {
+  console.log('自动检测到的本机 IP（已加入 CORS 白名单）:');
+  autoIPs.forEach(ip => console.log(`  - ${ip}`));
+}
+app.use(cors({
+  // origin: true 动态反射请求的 Origin，支持任意 IP/域名访问
+  // 配合 Nginx 反向代理使用，安全性由网络边界保证
+  origin: true,
   credentials: true
 }));
 // 增加请求体大小限制为20MB，与MAX_FILE_SIZE保持一致
@@ -58,16 +78,21 @@ async function startServer() {
     
     // 鉴权中间件：验证 JWT 并注入 req.user
     const jwt = require('jsonwebtoken');
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET 环境变量未配置，请在 .env 文件中设置');
+    }
     app.use(async (req, res, next) => {
       try {
         const auth = req.headers.authorization || '';
         const token = auth.startsWith('Bearer ') ? auth.substring(7) : '';
         if (!token) return next();
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+        const decoded = jwt.verify(token, jwtSecret);
         req.user = decoded;
         next();
-      } catch {
-        next();
+      } catch (err) {
+        // Token 无效或过期时返回 401，不再静默通过
+        return res.status(401).json({ message: '登录已过期或无效，请重新登录' });
       }
     });
 
