@@ -12,7 +12,8 @@ services:
       - "3001:3001"
     volumes:
       - backend-uploads:/app/uploads
-      - backend-db:/app/db
+      # 只挂载数据库文件所在子目录，避免覆盖 /app/db 中的源码（db.js 等）
+      - backend-db:/app/db/data
     environment:
       - NODE_ENV=production
       - PORT=3001

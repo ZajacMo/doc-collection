@@ -2,8 +2,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// 数据库文件路径 - 确保与迁移脚本使用相同的路径
-const dbPath = path.join(__dirname, 'database.db');
+// 数据库文件路径 - 使用 data/ 子目录，避免与源码文件冲突
+const dbPath = path.join(__dirname, 'data', 'database.db');
 console.log('数据库文件路径:', dbPath);
 
 // 创建数据库连接
