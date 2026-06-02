@@ -50,9 +50,9 @@
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column prop="createTime" label="创建时间" width="180">
+      <el-table-column prop="createdAt" label="创建时间" width="180">
         <template #default="{ row }">
-          {{ row && row.createTime ? formatDate(row.createTime) : '-' }}
+          {{ row && row.createdAt ? formatDate(row.createdAt) : '-' }}
         </template>
       </el-table-column>
       <el-table-column label="操作" width="280" fixed="right">

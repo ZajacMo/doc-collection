@@ -10,6 +10,11 @@ const router = useRouter()
 const route = useRoute()
 const userInfo = ref(getCurrentUser())
 
+// 更新用户信息的方法
+const updateUserInfo = (newUserInfo) => {
+  userInfo.value = newUserInfo;
+};
+
 // 提供用户信息和更新方法给子组件（必须在 setup 同步阶段）
 provide('userInfo', userInfo);
 provide('updateUserInfo', updateUserInfo);
@@ -56,11 +61,6 @@ const handleLogout = async () => {
     ElMessage.error('退出登录失败')
   }
 }
-
-// 更新用户信息的方法
-const updateUserInfo = (newUserInfo) => {
-  userInfo.value = newUserInfo;
-};
 
 // 修改密码
 const changePasswordDialogVisible = ref(false)
