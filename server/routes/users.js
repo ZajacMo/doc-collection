@@ -22,13 +22,13 @@ router.put('/:id', requireAdmin, userController.updateUser);
 // 删除用户（仅管理员）
 router.delete('/:id', requireAdmin, userController.deleteUser);
 
-// 批量创建用户
-router.post('/batch', userController.batchCreateUsers);
+// 批量创建用户（仅管理员）
+router.post('/batch', requireAdmin, userController.batchCreateUsers);
 
-// 修改密码
-router.post('/:id/change-password', userController.changePassword);
+// 修改密码（已登录用户可修改自己的密码，管理员可修改任意用户密码）
+router.post('/:id/change-password', requireAuth, userController.changePassword);
 
-// 重置密码（管理员）
-router.post('/:id/reset-password', userController.resetPassword);
+// 重置密码（仅管理员）
+router.post('/:id/reset-password', requireAdmin, userController.resetPassword);
 
 module.exports = router;

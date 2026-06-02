@@ -54,10 +54,21 @@ const getOne = async (sql, params = []) => {
   return rows.length > 0 ? rows[0] : null;
 };
 
+// 查询用户公开字段（排除 password）
+const USER_FIELDS = 'id, studentId, name, role, className, major, email, createdAt';
+
+/**
+ * 生成下一个用户 ID（基于现有最大整数值 +1）
+ */
+const generateNextId = async () => {
+  const maxIdRow = await getOne('SELECT MAX(CAST(id AS INTEGER)) as maxId FROM users');
+  return ((maxIdRow?.maxId || 0) + 1).toString();
+};
+
 // 获取所有用户
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await query('SELECT id, studentId, name, role, className, major, email, createdAt FROM users');
+    const users = await query(`SELECT ${USER_FIELDS} FROM users`);
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: '获取用户列表失败', error: error.message });
@@ -67,7 +78,7 @@ exports.getAllUsers = async (req, res) => {
 // 获取单个用户
 exports.getUserById = async (req, res) => {
   try {
-    const user = await getOne('SELECT * FROM users WHERE id = ?', [req.params.id]);
+    const user = await getOne(`SELECT ${USER_FIELDS} FROM users WHERE id = ?`, [req.params.id]);
     if (user) {
       res.json(user);
     } else {
@@ -81,17 +92,8 @@ exports.getUserById = async (req, res) => {
 // 创建用户
 exports.createUser = async (req, res) => {
   try {
-    // 确保 password 列存在（兼容已有数据库）
-    try {
-      const db = getDb();
-      await new Promise((resolve) => db.run('ALTER TABLE users ADD COLUMN password TEXT', () => resolve()));
-    } catch {
-      // 列已存在时忽略
-    }
-
-    // 获取最大ID
-    const maxIdRow = await getOne('SELECT MAX(CAST(id AS INTEGER)) as maxId FROM users');
-    const newId = (maxIdRow?.maxId || 0) + 1;
+    // 生成下一个用户 ID
+    const newId = await generateNextId();
 
     const { studentId, name, role = 'student', className = '', major = '', email = '', password } = req.body;
     if (!studentId || typeof studentId !== 'string' || studentId.trim() === '') {
@@ -106,11 +108,11 @@ exports.createUser = async (req, res) => {
 
     await run(
       'INSERT INTO users (id, studentId, name, role, className, major, email, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [newId.toString(), studentId, name, role, className, major, email, hashedPassword]
+      [newId, studentId, name, role, className, major, email, hashedPassword]
     );
 
     const newUser = {
-      id: newId.toString(),
+      id: newId,
       studentId,
       name,
       role,
@@ -180,7 +182,7 @@ exports.updateUser = async (req, res) => {
     );
 
     if (result.changes > 0) {
-      const updatedUser = await getOne('SELECT * FROM users WHERE id = ?', [req.params.id]);
+      const updatedUser = await getOne(`SELECT ${USER_FIELDS} FROM users WHERE id = ?`, [req.params.id]);
       res.json(updatedUser);
     } else {
       res.status(404).json({ message: '用户不存在' });
@@ -193,6 +195,16 @@ exports.updateUser = async (req, res) => {
 // 删除用户
 exports.deleteUser = async (req, res) => {
   try {
+    // 先查询用户信息以获取学号，用于级联删除提交记录
+    const user = await getOne('SELECT studentId FROM users WHERE id = ?', [req.params.id]);
+    if (!user) {
+      return res.status(404).json({ message: '用户不存在' });
+    }
+
+    // 级联删除该用户的所有提交记录
+    await run('DELETE FROM submissions WHERE studentId = ?', [user.studentId]);
+
+    // 删除用户
     const result = await run('DELETE FROM users WHERE id = ?', [req.params.id]);
     if (result.changes > 0) {
       res.json({ message: '用户删除成功' });
@@ -219,9 +231,8 @@ exports.batchCreateUsers = async (req, res) => {
       errors: []
     };
 
-    // 获取当前最大ID
-    const maxIdRow = await getOne('SELECT MAX(CAST(id AS INTEGER)) as maxId FROM users');
-    let nextId = (maxIdRow?.maxId || 0) + 1;
+    // 获取当前最大ID作为起始值
+    let nextId = parseInt(await generateNextId(), 10);
 
     for (const userData of users) {
       const { studentId, name, role = 'student', className = '', major = '', email = '' } = userData;
@@ -277,18 +288,16 @@ exports.loginUser = async (req, res) => {
       return res.status(401).json({ message: '用户不存在' });
     }
 
-    // 密码验证：优先使用 bcrypt 哈希，兼容无 password 字段的旧用户
-    let isPasswordValid = false;
-    if (user.password) {
-      isPasswordValid = await bcrypt.compare(password, user.password);
-    } else {
-      isPasswordValid = password === user.studentId;
+    // 密码验证：强制使用 bcrypt 哈希（不再兼容明文密码）
+    if (!user.password) {
+      return res.status(500).json({ message: '用户密码未初始化，请联系管理员重置密码' });
     }
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (isPasswordValid) {
       const token = jwt.sign(
         { id: user.id, studentId: user.studentId, name: user.name, role: user.role },
-        process.env.JWT_SECRET || 'fallback_secret',
+        process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
       );
       res.json({
@@ -315,6 +324,12 @@ exports.changePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
     const userId = req.params.id;
+    const currentUser = req.user;
+
+    // 权限校验：普通用户只能修改自己的密码，管理员可以修改任意用户密码
+    if (currentUser.role !== 'admin' && currentUser.id !== userId) {
+      return res.status(403).json({ message: '只能修改自己的密码' });
+    }
 
     if (!oldPassword || !newPassword) {
       return res.status(400).json({ message: '旧密码和新密码不能为空' });
@@ -330,13 +345,11 @@ exports.changePassword = async (req, res) => {
       return res.status(404).json({ message: '用户不存在' });
     }
 
-    // 验证旧密码
-    let isOldPasswordValid = false;
-    if (user.password) {
-      isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
-    } else {
-      isOldPasswordValid = oldPassword === user.studentId;
+    // 验证旧密码（移除明文兼容，强制使用 bcrypt）
+    if (!user.password) {
+      return res.status(500).json({ message: '用户密码未初始化，请联系管理员重置密码' });
     }
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
     if (!isOldPasswordValid) {
       return res.status(401).json({ message: '旧密码错误' });
     }
