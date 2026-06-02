@@ -37,6 +37,7 @@
 
 <script setup>
 import { formatDate } from "@/utils/date";
+import { isAssignmentExpired } from "../../services/assignmentService";
 import { Clock, Calendar, User, Timer } from '@element-plus/icons-vue';
 
 defineProps({
@@ -45,6 +46,33 @@ defineProps({
     required: true
   }
 });
+
+// 检查作业是否紧急（24小时内截止且未过期）
+const isAssignmentUrgent = (deadline) => {
+  if (!deadline) return false;
+  const now = new Date();
+  const deadlineDate = new Date(deadline);
+  const diff = deadlineDate - now;
+  return diff > 0 && diff < 24 * 60 * 60 * 1000;
+};
+
+// 计算剩余时间（X天X小时X分钟）
+const getCountdown = (deadline) => {
+  if (!deadline) return '无截止日期';
+  const now = new Date();
+  const deadlineDate = new Date(deadline);
+  const diff = deadlineDate - now;
+
+  if (diff <= 0) return '已截止';
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (days > 0) return `${days}天${hours}小时${minutes}分钟`;
+  if (hours > 0) return `${hours}小时${minutes}分钟`;
+  return `${minutes}分钟`;
+};
 </script>
 
 <style scoped>
