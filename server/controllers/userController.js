@@ -295,9 +295,13 @@ exports.loginUser = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (isPasswordValid) {
+      // 加载用户权限
+      const { getRolePermissions } = require('../db/db');
+      const permissions = await getRolePermissions(user.role);
+
       const token = jwt.sign(
-        { id: user.id, studentId: user.studentId, name: user.name, role: user.role },
-        process.env.JWT_SECRET,
+        { id: user.id, studentId: user.studentId, name: user.name, role: user.role, permissions },
+        process.env.JWT_SECRET || 'fallback_secret',
         { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
       );
       res.json({
@@ -307,7 +311,8 @@ exports.loginUser = async (req, res) => {
           id: user.id,
           studentId: user.studentId,
           name: user.name,
-          role: user.role
+          role: user.role,
+          permissions
         }
       });
     } else {

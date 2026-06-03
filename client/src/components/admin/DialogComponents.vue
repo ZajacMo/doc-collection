@@ -63,8 +63,8 @@
         <el-table-column prop="className" label="班级" width="120" />
         <el-table-column prop="role" label="角色" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.role === 'admin' ? 'danger' : 'primary'" size="small">
-              {{ row.role === 'admin' ? '管理员' : '学生' }}
+            <el-tag :type="row.role === 'super_admin' ? 'warning' : row.role === 'admin' ? 'danger' : 'primary'" size="small">
+              {{ getRoleLabel(row.role) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -119,8 +119,12 @@
       </el-form-item>
       <el-form-item label="角色" prop="role">
         <el-select v-model="addUserForm.role">
-          <el-option label="学生" value="student"></el-option>
-          <el-option label="管理员" value="admin"></el-option>
+          <el-option
+            v-for="role in availableRoles"
+            :key="role.value"
+            :label="role.label"
+            :value="role.value"
+          />
         </el-select>
       </el-form-item>
     </el-form>
@@ -155,8 +159,12 @@
       </el-form-item>
       <el-form-item label="角色" prop="role">
         <el-select v-model="editUserForm.role">
-          <el-option label="学生" value="student"></el-option>
-          <el-option label="管理员" value="admin"></el-option>
+          <el-option
+            v-for="role in availableRoles"
+            :key="role.value"
+            :label="role.label"
+            :value="role.value"
+          />
         </el-select>
       </el-form-item>
     </el-form>
@@ -177,12 +185,13 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { UploadFilled, Download } from '@element-plus/icons-vue';
 import * as XLSX from 'xlsx';
 import { createUser, updateUser, importUsersBatch } from '../../services/userService';
 import { createAssignment } from '../../services/assignmentService';
+import { getAllRoles } from '../../services/roleService.js';
 import AssignmentFormDialog from '../AssignmentFormDialog.vue';
 
 const props = defineProps({
@@ -267,6 +276,39 @@ watch(() => props.editUserData, (newVal) => {
 const addUserFormRef = ref(null);
 const editUserFormRef = ref(null);
 const createAssignmentFormRef = ref(null);
+const availableRoles = ref([
+  { label: '学生', value: 'student' },
+  { label: '管理员', value: 'admin' }
+]);
+
+// 加载可用角色列表
+const loadRoles = async () => {
+  try {
+    const roles = await getAllRoles();
+    if (Array.isArray(roles) && roles.length > 0) {
+      const roleMap = {
+        student: '学生',
+        admin: '管理员',
+        super_admin: '超级管理员'
+      };
+      availableRoles.value = roles.map(r => ({
+        label: roleMap[r.code] || r.name,
+        value: r.code
+      }));
+    }
+  } catch (error) {
+    console.error('加载角色列表失败:', error);
+  }
+};
+
+const getRoleLabel = (roleCode) => {
+  const found = availableRoles.value.find(r => r.value === roleCode);
+  return found ? found.label : roleCode;
+};
+
+onMounted(() => {
+  loadRoles();
+});
 
 // 添加用户表单
 const addUserForm = ref({
@@ -407,11 +449,19 @@ const parsePreviewData = (jsonData) => {
 
     seenStudentIds.add(studentId);
 
+    // 动态角色映射：先检查是否是已知的内置角色，否则保留原始值
+    const knownRoleMap = {
+      '超级管理员': 'super_admin',
+      '管理员': 'admin',
+      '学生': 'student'
+    };
+    const mappedRole = knownRoleMap[role] || role;
+
     return {
       studentId,
       name,
       className,
-      role: role === 'admin' || role === '管理员' ? 'admin' : 'student',
+      role: mappedRole,
       major,
       email,
       status,
@@ -455,9 +505,10 @@ const resetImport = () => {
 
 const downloadTemplate = () => {
   const headers = ['学号', '姓名', '班级', '角色', '专业', '邮箱'];
+  const firstRole = availableRoles.value.find(r => r.value === 'student') || availableRoles.value[0] || { value: 'student', label: '学生' };
   const example = [
-    { '学号': '2023001', '姓名': '张三', '班级': '计算机1班', '角色': 'student', '专业': '计算机科学', '邮箱': 'zhangsan@example.com' },
-    { '学号': '2023002', '姓名': '李四', '班级': '计算机1班', '角色': 'student', '专业': '计算机科学', '邮箱': 'lisi@example.com' }
+    { '学号': '2023001', '姓名': '张三', '班级': '计算机1班', '角色': firstRole.value, '专业': '计算机科学', '邮箱': 'zhangsan@example.com' },
+    { '学号': '2023002', '姓名': '李四', '班级': '计算机1班', '角色': firstRole.value, '专业': '计算机科学', '邮箱': 'lisi@example.com' }
   ];
 
   const worksheet = XLSX.utils.json_to_sheet(example, { header: headers });
