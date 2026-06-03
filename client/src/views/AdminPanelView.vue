@@ -50,6 +50,11 @@
           @delete-submission="deleteSubmission"
         />
       </el-tab-pane>
+
+      <!-- 角色权限管理（仅超级管理员） -->
+      <el-tab-pane v-if="isSuperAdmin()" label="角色权限" name="roles">
+        <role-management />
+      </el-tab-pane>
     </el-tabs>
 
     <!-- 对话框组件 -->
@@ -71,6 +76,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { getAllUsers, deleteUser as deleteUserAPI, resetPassword as resetPasswordAPI } from '../services/userService';
 import { getAllAssignments, deleteAssignment as deleteAssignmentAPI } from '../services/assignmentService';
 import { getAllSubmissions, deleteSubmission as deleteSubmissionAPI, downloadFile, handleFileDownload } from '../services/submissionService';
+import { isSuperAdmin } from '../utils/permissions.js';
 
 // 导入子组件
 import OverviewSection from '../components/admin/OverviewSection.vue';
@@ -78,6 +84,7 @@ import UserManagement from '../components/admin/UserManagement.vue';
 import AssignmentManagement from '../components/admin/AssignmentManagement.vue';
 import SubmissionManagement from '../components/admin/SubmissionManagement.vue';
 import DialogComponents from '../components/admin/DialogComponents.vue';
+import RoleManagement from '../components/admin/RoleManagement.vue';
 
 const router = useRouter();
 const activeTab = ref('overview');

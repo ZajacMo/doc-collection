@@ -286,8 +286,12 @@ exports.loginUser = async (req, res) => {
     }
 
     if (isPasswordValid) {
+      // 加载用户权限
+      const { getRolePermissions } = require('../db/db');
+      const permissions = await getRolePermissions(user.role);
+
       const token = jwt.sign(
-        { id: user.id, studentId: user.studentId, name: user.name, role: user.role },
+        { id: user.id, studentId: user.studentId, name: user.name, role: user.role, permissions },
         process.env.JWT_SECRET || 'fallback_secret',
         { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
       );
@@ -298,7 +302,8 @@ exports.loginUser = async (req, res) => {
           id: user.id,
           studentId: user.studentId,
           name: user.name,
-          role: user.role
+          role: user.role,
+          permissions
         }
       });
     } else {

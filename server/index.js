@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 // 数据库连接模块
-const { initDatabase, closeDb, ensureSchema } = require(process.env.DB_PATH || './db/db');
+const { initDatabase, closeDb, ensureSchema, initRbacSchema } = require(process.env.DB_PATH || './db/db');
 
 // 创建Express应用
 const app = express();
@@ -55,31 +55,48 @@ async function startServer() {
     // 确保数据库 schema 是最新的
     await ensureSchema();
     console.log('数据库 schema 检查完成');
-    
+
+    // 初始化 RBAC 表结构和默认数据
+    await initRbacSchema();
+    console.log('RBAC 初始化完成');
+
     // 鉴权中间件：验证 JWT 并注入 req.user
     const jwt = require('jsonwebtoken');
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET 环境变量未配置，请在 .env 文件中设置');
+    }
+    const { loadUserPermissions } = require('./middleware/auth');
     app.use(async (req, res, next) => {
       try {
         const auth = req.headers.authorization || '';
         const token = auth.startsWith('Bearer ') ? auth.substring(7) : '';
         if (!token) return next();
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+        const decoded = jwt.verify(token, jwtSecret);
         req.user = decoded;
         next();
-      } catch {
-        next();
+      } catch (err) {
+        // Token 无效或过期时返回 401，不再静默通过
+        return res.status(401).json({ message: '登录已过期或无效，请重新登录' });
       }
     });
+
+    // 加载用户权限到 req.user.permissions
+    app.use(loadUserPermissions);
 
     // 路由
     const userRoutes = require('./routes/users');
     const assignmentRoutes = require('./routes/assignments');
     const submissionRoutes = require('./routes/submissions');
+    const roleRoutes = require('./routes/roles');
+    const permissionRoutes = require('./routes/permissions');
     const uploadRoutes = require('./controllers/uploadController'); // 直接使用上传控制器作为路由
 
     app.use('/api/users', userRoutes);
     app.use('/api/assignments', assignmentRoutes);
     app.use('/api/submissions', submissionRoutes);
+    app.use('/api/roles', roleRoutes);
+    app.use('/api/permissions', permissionRoutes);
     app.use('/api/upload', uploadRoutes); // 添加文件上传路由
     
     // 健康检查接口
@@ -157,6 +174,13 @@ async function startServer() {
       console.log('  PUT    /api/submissions/:id    - 更新提交');
       console.log('  DELETE /api/submissions/:id    - 删除提交');
       console.log('  GET    /api/submissions/:id/download - 下载文件');
+    console.log('  GET    /api/roles                 - 获取所有角色');
+    console.log('  GET    /api/roles/:id             - 获取单个角色');
+    console.log('  POST   /api/roles                 - 创建角色');
+    console.log('  PUT    /api/roles/:id             - 更新角色');
+    console.log('  DELETE /api/roles/:id             - 删除角色');
+    console.log('  GET    /api/permissions           - 获取所有权限');
+    console.log('  GET    /api/permissions/me        - 获取当前用户权限');
     });
 
     server.on('error', (err) => {

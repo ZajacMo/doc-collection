@@ -132,9 +132,10 @@ const importUsersFromExcel = async () => {
     // 插入默认用户（默认密码为学号）
     const defaultUsers = [
       { id: '1', studentId: 'admin', name: '管理员', role: 'admin' },
-      { id: '2', studentId: '2023001', name: '张三', role: 'student' },
-      { id: '3', studentId: '2023002', name: '李四', role: 'student' },
-      { id: '4', studentId: '2023003', name: '王五', role: 'student' }
+      { id: '2', studentId: 'super', name: '超级管理员', role: 'super_admin' },
+      { id: '3', studentId: '2023001', name: '张三', role: 'student' },
+      { id: '4', studentId: '2023002', name: '李四', role: 'student' },
+      { id: '5', studentId: '2023003', name: '王五', role: 'student' }
     ];
 
     for (const user of defaultUsers) {

@@ -2,10 +2,10 @@
   <div class="user-management">
     <!-- 用户操作 -->
     <div class="user-actions">
-      <el-button type="primary" @click="$emit('show-import-dialog')">
+      <el-button v-if="hasPermission('user:create')" type="primary" @click="$emit('show-import-dialog')">
         导入用户
       </el-button>
-      <el-button type="primary" @click="$emit('show-add-dialog')">
+      <el-button v-if="hasPermission('user:create')" type="primary" @click="$emit('show-add-dialog')">
         添加用户
       </el-button>
     </div>
@@ -36,16 +36,10 @@
       <el-table-column prop="role" label="角色" width="100">
         <template #default="{ row }">
           <el-tag
-            v-if="row && row.role === 'admin'"
-            type="danger"
+            v-if="row"
+            :type="row.role === 'super_admin' ? 'warning' : row.role === 'admin' ? 'danger' : 'primary'"
           >
-            管理员
-          </el-tag>
-          <el-tag
-            v-else-if="row"
-            type="primary"
-          >
-            学生
+            {{ getRoleDisplayName(row.role) }}
           </el-tag>
           <span v-else>-</span>
         </template>
@@ -59,6 +53,7 @@
         <template #default="{ row }">
           <template v-if="row">
             <el-button
+              v-if="hasPermission('user:update')"
               type="primary"
               size="small"
               @click="$emit('edit-user', row)"
@@ -66,7 +61,7 @@
               编辑
             </el-button>
             <el-button
-              v-if="row.role !== 'admin'"
+              v-if="hasPermission('user:reset_password') && !isProtectedRole(row.role)"
               type="warning"
               size="small"
               @click="$emit('reset-password', row.id, row.name, row.studentId)"
@@ -74,14 +69,14 @@
               重置密码
             </el-button>
             <el-button
-              v-if="row.role !== 'admin'"
+              v-if="hasPermission('user:delete') && !isProtectedRole(row.role)"
               type="danger"
               size="small"
               @click="$emit('delete-user', row.id, row.name)"
             >
               删除
             </el-button>
-            <span v-else>-</span>
+            <span v-else-if="!hasPermission('user:update')">-</span>
           </template>
           <span v-else>-</span>
         </template>
@@ -105,7 +100,9 @@
 
 <script setup>
 import { formatDate } from "@/utils/date";
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { hasPermission } from '../../utils/permissions.js';
+import { getAllRoles } from '../../services/roleService.js';
 
 const props = defineProps({
   allUsers: {
@@ -119,6 +116,29 @@ const emit = defineEmits(['show-import-dialog', 'show-add-dialog', 'edit-user', 
 const searchKeyword = ref('');
 const currentPage = ref(1);
 const pageSize = ref(20);
+const roleList = ref([]);
+
+// 加载角色列表
+onMounted(async () => {
+  try {
+    const roles = await getAllRoles();
+    roleList.value = Array.isArray(roles) ? roles : [];
+  } catch (e) {
+    console.error('加载角色列表失败:', e);
+  }
+});
+
+// 受保护的角色（不允许重置密码或删除）
+const isProtectedRole = (role) => {
+  return role === 'super_admin';
+};
+
+const getRoleDisplayName = (roleCode) => {
+  const found = roleList.value.find(r => r.code === roleCode);
+  if (found) return found.name;
+  const fallback = { super_admin: '超级管理员', admin: '管理员', student: '学生' };
+  return fallback[roleCode] || roleCode;
+};
 
 /**
  * 过滤用户数据
