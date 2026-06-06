@@ -5,7 +5,7 @@
     v-model="localVisible"
     @close="handleClose"
     width="90%"
-    :max-width="600"
+    :max-width="640"
   >
     <el-form
       ref="formRef"
@@ -16,6 +16,7 @@
       <el-form-item label="作业名称" prop="title">
         <el-input v-model="formData.title" placeholder="请输入作业名称"></el-input>
       </el-form-item>
+
       <el-form-item label="作业描述" prop="description">
         <el-input
           v-model="formData.description"
@@ -24,6 +25,7 @@
           :rows="4"
         ></el-input>
       </el-form-item>
+
       <el-form-item label="截止日期" prop="deadline">
         <el-date-picker
           v-model="formData.deadline"
@@ -32,46 +34,95 @@
           style="width: 100%"
         ></el-date-picker>
       </el-form-item>
-      <el-form-item label="提交人员" prop="relativeStudents">
-        <div style="margin-bottom:8px;">
-          <el-checkbox v-model="unlimitedStudents">全部学生</el-checkbox>
+
+      <!-- 提交人员 -->
+      <el-form-item label="提交人员" prop="relativeStudents" class="stacked-content">
+        <el-checkbox v-model="unlimitedStudents">全部学生</el-checkbox>
+        <p v-show="!unlimitedStudents" class="form-tip">取消勾选后可指定部分学生提交</p>
+
+        <div v-show="!unlimitedStudents" class="select-box">
+          <div class="select-toolbar">
+            <el-button size="small" @click="selectAllStudents">全选</el-button>
+            <el-button size="small" @click="clearAllStudents">清空</el-button>
+            <span class="select-count">已选 {{ formData.relativeStudents.length }} 人</span>
+          </div>
+          <el-select
+            v-model="formData.relativeStudents"
+            multiple
+            filterable
+            placeholder="搜索学号或姓名"
+            style="width: 100%"
+          >
+            <el-option-group
+              v-for="group in studentGroups"
+              :key="group.className"
+              :label="group.className"
+            >
+              <el-option
+                v-for="stu in group.students"
+                :key="stu.value"
+                :label="`${stu.label}（${stu.value}）`"
+                :value="stu.value"
+              ></el-option>
+            </el-option-group>
+          </el-select>
         </div>
-        <el-select
-          v-model="formData.relativeStudents"
-          multiple
-          filterable
-          placeholder="选择需要提交的学生（学号）"
-          :disabled="unlimitedStudents"
-        >
-          <el-option
-            v-for="stu in studentOptions"
-            :key="stu.value"
-            :label="`${stu.label}（${stu.value}）`"
-            :value="stu.value"
-          ></el-option>
-        </el-select>
-        <div class="form-tip">不选择表示全部学生需要提交</div>
       </el-form-item>
-      <!-- 文件命名规则表单项已移除 -->
-      <el-form-item label="允许的文件类型" prop="fileTypes">
-        <div style="margin-bottom:8px;">
-          <el-checkbox v-model="unlimitedTypes">不限提交类型</el-checkbox>
+
+      <!-- 允许的文件类型 -->
+      <el-form-item label="提交类型" prop="fileTypes" class="stacked-content">
+        <el-checkbox v-model="unlimitedTypes">不限提交类型</el-checkbox>
+
+        <div v-show="!unlimitedTypes" class="select-box">
+          <!-- 已选标签 -->
+          <div v-if="formData.fileTypes.length > 0" class="selected-tags">
+            <el-tag
+              v-for="ext in formData.fileTypes"
+              :key="ext"
+              closable
+              size="small"
+              @close="removeFileType(ext)"
+            >
+              .{{ ext }}
+            </el-tag>
+          </div>
+
+          <!-- 快捷操作 -->
+          <div class="select-toolbar">
+            <el-button size="small" @click="selectAllFileTypes">全选</el-button>
+            <el-button size="small" @click="clearAllFileTypes">清空</el-button>
+            <span class="select-count">已选 {{ formData.fileTypes.length }} 项</span>
+          </div>
+
+          <!-- 分类折叠面板 -->
+          <el-collapse v-model="activeFileGroups">
+            <el-collapse-item
+              v-for="group in FILE_TYPE_GROUPS"
+              :key="group.title"
+              :title="group.title"
+              :name="group.title"
+            >
+              <div class="group-toolbar">
+                <el-button link size="small" @click="selectGroup(group)">全选本组</el-button>
+                <el-button link size="small" @click="clearGroup(group)">清空本组</el-button>
+              </div>
+              <el-checkbox-group v-model="formData.fileTypes" class="type-checkbox-grid">
+                <el-checkbox
+                  v-for="opt in group.types"
+                  :key="opt.value"
+                  :label="opt.value"
+                  border
+                  size="small"
+                >
+                  {{ opt.label }}
+                </el-checkbox>
+              </el-checkbox-group>
+            </el-collapse-item>
+          </el-collapse>
         </div>
-        <el-select
-          v-model="formData.fileTypes"
-          multiple
-          placeholder="选择允许的文件类型"
-          :disabled="unlimitedTypes"
-        >
-          <el-option
-            v-for="opt in SUPPORTED_FILE_TYPES"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          ></el-option>
-        </el-select>
       </el-form-item>
     </el-form>
+
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="handleCancel">取消</el-button>
@@ -82,8 +133,7 @@
 </template>
 
 <script setup>
-import { formatDate } from "@/utils/date";
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, watch } from 'vue';
 import { getAllUsers } from '../services/userService';
 
 const props = defineProps({
@@ -91,98 +141,97 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  // 编辑模式时传入的作业数据
   assignment: {
     type: Object,
     default: null
   },
-  // 对话框类型：'create' 或 'update'
   dialogType: {
     type: String,
     default: 'create',
-    validator: (value) => {
-      return ['create', 'update'].includes(value);
-    }
+    validator: (value) => ['create', 'update'].includes(value)
   }
 });
 
 const emit = defineEmits(['update:visible', 'cancel', 'submit']);
 
-const SUPPORTED_FILE_TYPES = [
-  { label: 'PDF', value: 'pdf' },
-  { label: 'Word 文档', value: 'doc' },
-  { label: 'Word 文档', value: 'docx' },
-  { label: 'Excel 表格', value: 'xls' },
-  { label: 'Excel 表格', value: 'xlsx' },
-  { label: 'PPT 演示', value: 'ppt' },
-  { label: 'PPT 演示', value: 'pptx' },
-  { label: '文本', value: 'txt' },
-  { label: 'Markdown', value: 'md' },
-  { label: '图片', value: 'png' },
-  { label: '图片', value: 'jpg' },
-  { label: '图片', value: 'jpeg' },
-  { label: '图片', value: 'gif' },
-  { label: '数据', value: 'csv' },
-  { label: '数据', value: 'json' },
-  { label: '数据', value: 'xml' },
-  { label: '压缩包', value: 'zip' },
-  { label: '压缩包', value: 'rar' },
-  { label: '压缩包', value: '7z' },
-  { label: '代码', value: 'c' },
-  { label: '代码', value: 'cpp' },
-  { label: '代码', value: 'java' },
-  { label: '代码', value: 'py' },
-  { label: '代码', value: 'js' },
-  { label: '代码', value: 'ts' },
-  { label: '网页', value: 'html' },
-  { label: '网页', value: 'css' }
+// ============ 文件类型分组配置 ============
+const FILE_TYPE_GROUPS = [
+  {
+    title: '文档',
+    types: [
+      { label: '.pdf', value: 'pdf' },
+      { label: '.doc', value: 'doc' },
+      { label: '.docx', value: 'docx' },
+      { label: '.xls', value: 'xls' },
+      { label: '.xlsx', value: 'xlsx' },
+      { label: '.ppt', value: 'ppt' },
+      { label: '.pptx', value: 'pptx' }
+    ]
+  },
+  {
+    title: '图片',
+    types: [
+      { label: '.png', value: 'png' },
+      { label: '.jpg', value: 'jpg' },
+      { label: '.jpeg', value: 'jpeg' },
+      { label: '.gif', value: 'gif' }
+    ]
+  },
+  {
+    title: '压缩',
+    types: [
+      { label: '.zip', value: 'zip' },
+      { label: '.rar', value: 'rar' },
+      { label: '.7z', value: '7z' }
+    ]
+  },
+  {
+    title: '代码 / 文本',
+    types: [
+      { label: '.txt', value: 'txt' },
+      { label: '.md', value: 'md' },
+      { label: '.csv', value: 'csv' },
+      { label: '.json', value: 'json' },
+      { label: '.xml', value: 'xml' },
+      { label: '.c', value: 'c' },
+      { label: '.cpp', value: 'cpp' },
+      { label: '.java', value: 'java' },
+      { label: '.py', value: 'py' },
+      { label: '.js', value: 'js' },
+      { label: '.ts', value: 'ts' },
+      { label: '.html', value: 'html' },
+      { label: '.css', value: 'css' }
+    ]
+  }
 ];
 
-// 本地响应式引用，用于存储visible状态
+const ALL_FILE_TYPE_VALUES = FILE_TYPE_GROUPS.flatMap(g => g.types.map(t => t.value));
+
+// ============ 本地状态 ============
 const localVisible = ref(props.visible);
-
-// 监听props中的visible变化，同步到本地变量
-watch(() => props.visible, (newValue) => {
-  localVisible.value = newValue;
-});
-
-// 监听本地visible变化，发出update事件
-watch(localVisible, (newValue) => {
-  emit('update:visible', newValue);
-});
-
-// 表单引用与开关声明（确保在任何引用之前）
 const formRef = ref(null);
-const unlimitedTypes = ref(false);
+const unlimitedTypes = ref(true);
 const unlimitedStudents = ref(true);
 const studentOptions = ref([]);
+const studentGroups = ref([]);
+const activeFileGroups = ref(['文档', '图片']);
 
+// ============ 表单数据 ============
+const formData = reactive({
+  title: '',
+  description: '',
+  deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
+  fileTypes: [],
+  relativeStudents: []
+});
+
+// ============ 验证规则 ============
 const fileTypesValidator = (rule, value, callback) => {
   if (unlimitedTypes.value) return callback();
   if (!Array.isArray(value) || value.length < 1) return callback(new Error('请至少选择一种文件类型'));
   callback();
 };
 
-const loadStudentOptions = async () => {
-  try {
-    const users = await getAllUsers();
-    const students = Array.isArray(users) ? users.filter(u => u.role === 'student') : [];
-    studentOptions.value = students.map(s => ({ label: s.name, value: s.studentId }));
-  } catch (e) {
-    studentOptions.value = [];
-  }
-};
-
-// 表单数据
-const formData = reactive({
-  title: '',
-  description: '',
-  deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000), // 默认一周后
-  fileTypes: ['pdf', 'png', 'jpg', 'jpeg', 'zip', 'rar'],
-  relativeStudents: []
-});
-
-// 表单验证规则
 const rules = {
   title: [
     { required: true, message: '请输入作业名称', trigger: 'blur' },
@@ -191,39 +240,100 @@ const rules = {
   deadline: [
     { required: true, message: '请选择截止日期', trigger: 'change' }
   ],
-
   fileTypes: [
     { validator: fileTypesValidator, trigger: 'change' }
-  ],
-  relativeStudents: [
-    { required: false, trigger: 'change' }
   ]
 };
 
-// 对话框标题
-const dialogTitle = computed(() => {
-  return props.dialogType === 'create' ? '创建作业' : '编辑作业';
+// ============ 计算属性 ============
+const dialogTitle = computed(() => props.dialogType === 'create' ? '创建作业' : '编辑作业');
+
+// ============ 数据加载 ============
+const loadStudentOptions = async () => {
+  try {
+    const users = await getAllUsers();
+    const students = Array.isArray(users) ? users.filter(u => u.role === 'student') : [];
+
+    studentOptions.value = students.map(s => ({ label: s.name, value: s.studentId }));
+
+    const groupMap = new Map();
+    for (const s of students) {
+      const className = s.className?.trim() || '未分组';
+      if (!groupMap.has(className)) {
+        groupMap.set(className, []);
+      }
+      groupMap.get(className).push({ label: s.name, value: s.studentId });
+    }
+    const sortedEntries = [...groupMap.entries()].sort((a, b) => {
+      if (a[0] === '未分组') return 1;
+      if (b[0] === '未分组') return -1;
+      return a[0].localeCompare(b[0], 'zh-CN');
+    });
+    studentGroups.value = sortedEntries.map(([className, students]) => ({ className, students }));
+  } catch (e) {
+    studentOptions.value = [];
+    studentGroups.value = [];
+  }
+};
+
+// ============ 文件类型快捷操作 ============
+const removeFileType = (ext) => {
+  const idx = formData.fileTypes.indexOf(ext);
+  if (idx > -1) formData.fileTypes.splice(idx, 1);
+};
+
+const selectAllFileTypes = () => {
+  formData.fileTypes = [...ALL_FILE_TYPE_VALUES];
+};
+
+const clearAllFileTypes = () => {
+  formData.fileTypes = [];
+};
+
+const selectGroup = (group) => {
+  const groupValues = group.types.map(t => t.value);
+  const set = new Set(formData.fileTypes);
+  groupValues.forEach(v => set.add(v));
+  formData.fileTypes = [...set];
+};
+
+const clearGroup = (group) => {
+  const groupValues = new Set(group.types.map(t => t.value));
+  formData.fileTypes = formData.fileTypes.filter(v => !groupValues.has(v));
+};
+
+// ============ 学生快捷操作 ============
+const selectAllStudents = () => {
+  formData.relativeStudents = studentOptions.value.map(s => s.value);
+};
+
+const clearAllStudents = () => {
+  formData.relativeStudents = [];
+};
+
+// ============ 对话框控制 ============
+watch(() => props.visible, (newValue) => {
+  localVisible.value = newValue;
 });
 
-// 处理对话框关闭
+watch(localVisible, (newValue) => {
+  emit('update:visible', newValue);
+});
+
 const handleClose = () => {
   localVisible.value = false;
 };
 
-// 重置表单
 const resetForm = () => {
-  // 重置表单数据
   if (props.dialogType === 'create') {
-    // 创建模式：使用默认值
     formData.title = '';
     formData.description = '';
     formData.deadline = new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
-    formData.fileTypes = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar'];
+    formData.fileTypes = [];
     formData.relativeStudents = [];
-    unlimitedTypes.value = false;
+    unlimitedTypes.value = true;
     unlimitedStudents.value = true;
   } else if (props.assignment) {
-    // 编辑模式：使用传入的作业数据
     formData.title = props.assignment.title || '';
     formData.description = props.assignment.description || '';
     formData.deadline = props.assignment.deadline ? new Date(props.assignment.deadline) : new Date();
@@ -233,25 +343,20 @@ const resetForm = () => {
     unlimitedStudents.value = formData.relativeStudents.length === 0;
   }
 
-  // 重置表单验证状态
   if (formRef.value) {
     formRef.value.resetFields();
   }
 };
 
-// 处理取消
 const handleCancel = () => {
   localVisible.value = false;
   emit('cancel');
 };
 
-// 处理提交
 const handleSubmit = async () => {
   try {
-    // 表单验证
     await formRef.value.validate();
 
-    // 提交表单数据
     const payload = { ...formData };
     if (unlimitedTypes.value) {
       payload.fileTypes = [];
@@ -261,12 +366,10 @@ const handleSubmit = async () => {
     }
     emit('submit', payload);
   } catch (error) {
-    // 表单验证失败，不执行后续操作
     console.log('表单验证失败');
   }
 };
 
-// 监听对话框可见状态变化
 watch(() => props.visible, (newVisible) => {
   if (newVisible) {
     resetForm();
@@ -274,7 +377,6 @@ watch(() => props.visible, (newVisible) => {
   }
 }, { immediate: true });
 
-// 监听作业数据变化（编辑模式下）
 watch(() => props.assignment, () => {
   if (props.visible && props.dialogType === 'update') {
     resetForm();
@@ -283,15 +385,97 @@ watch(() => props.assignment, () => {
 </script>
 
 <style scoped>
-.form-tip {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  margin-top: 5px;
+/* content 垂直排列的表单项 */
+.stacked-content :deep(.el-form-item__content) {
+  display: block;
 }
 
+/* 提示文字 */
+.form-tip {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin: 4px 0 0 0;
+  line-height: 1.5;
+}
+
+/* 底部按钮 */
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+/* 统一的选择区域容器 */
+.select-box {
+  margin-top: 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: var(--el-border-radius-base);
+  padding: 12px;
+  background: var(--el-fill-color-lighter);
+}
+
+/* 已选标签 */
+.selected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--el-border-color-light);
+}
+
+/* 工具栏 */
+.select-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.select-count {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-left: auto;
+}
+
+/* 组内工具栏 */
+.group-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* 类型复选框网格 */
+.type-checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.type-checkbox-grid :deep(.el-checkbox) {
+  margin-right: 0;
+  min-width: 76px;
+  justify-content: center;
+}
+
+/* 折叠面板去默认内边距 */
+.select-box :deep(.el-collapse) {
+  border: none;
+}
+
+.select-box :deep(.el-collapse-item__header) {
+  padding-left: 0;
+  padding-right: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.select-box :deep(.el-collapse-item__wrap) {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.select-box :deep(.el-collapse-item__content) {
+  padding-bottom: 8px;
 }
 </style>
