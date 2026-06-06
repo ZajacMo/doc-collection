@@ -121,6 +121,52 @@ const createTables = async () => {
 };
 
 /**
+ * 为 assignments 表添加 maxFileSize 列
+ */
+const addMaxFileSizeColumn = async () => {
+  const db = getDb();
+
+  try {
+    // 检查此迁移是否已执行
+    const migrationExists = await new Promise((resolve) => {
+      db.get('SELECT 1 FROM migrations WHERE name = ?', ['add_max_file_size_v2'], (err, row) => {
+        resolve(!!row);
+      });
+    });
+
+    if (migrationExists) {
+      console.log('迁移 add_max_file_size_v2 已执行，跳过');
+      return;
+    }
+
+    // 检查列是否已存在（防御性）
+    const columns = await new Promise((resolve, reject) => {
+      db.all("PRAGMA table_info(assignments)", (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    const hasColumn = columns.some(col => col.name === 'maxFileSize');
+    if (!hasColumn) {
+      await runQuery(db, 'ALTER TABLE assignments ADD COLUMN maxFileSize INTEGER NOT NULL DEFAULT 20');
+      console.log('已为 assignments 表添加 maxFileSize 列');
+    }
+
+    // 回填现有数据（理论上 DEFAULT 已处理，但显式更新更安全）
+    const envMaxMB = Math.floor((parseInt(process.env.MAX_FILE_SIZE) || 20971520) / (1024 * 1024));
+    await runQuery(db, 'UPDATE assignments SET maxFileSize = ? WHERE maxFileSize IS NULL OR maxFileSize = 0', [envMaxMB]);
+
+    // 记录迁移已执行
+    await runQuery(db, `INSERT INTO migrations (name) VALUES ('add_max_file_size_v2')`);
+    console.log('迁移 add_max_file_size_v2 完成');
+  } catch (error) {
+    console.error('添加 maxFileSize 列失败:', error);
+    throw error;
+  }
+};
+
+/**
  * 从Excel文件导入用户数据
  */
 const importUsersFromExcel = async () => {
@@ -271,7 +317,10 @@ const runMigration = async () => {
     await importUsersFromExcel();
     await importAssignments();
     await importSubmissions();
-    
+
+    // 添加 maxFileSize 列
+    await addMaxFileSizeColumn();
+
     console.log('数据库迁移完成');
   } catch (error) {
     console.error('数据库迁移失败:', error.message);

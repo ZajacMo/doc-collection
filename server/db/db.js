@@ -70,11 +70,31 @@ const ensureSchema = () => {
               return;
             }
             console.log('成功添加 password 列到 users 表');
-            resolve();
           });
-        } else {
-          resolve();
         }
+
+        // 检查 assignments 表是否有 maxFileSize 列
+        db.all("PRAGMA table_info(assignments)", (err2, assignmentColumns) => {
+          if (err2) {
+            console.error('检查 assignments 表结构失败:', err2.message);
+            reject(err2);
+            return;
+          }
+          const hasMaxFileSize = assignmentColumns.some(col => col.name === 'maxFileSize');
+          if (!hasMaxFileSize) {
+            db.run('ALTER TABLE assignments ADD COLUMN maxFileSize INTEGER NOT NULL DEFAULT 20', (alterErr2) => {
+              if (alterErr2) {
+                console.error('添加 maxFileSize 列失败:', alterErr2.message);
+                reject(alterErr2);
+                return;
+              }
+              console.log('成功添加 maxFileSize 列到 assignments 表');
+              resolve();
+            });
+          } else {
+            resolve();
+          }
+        });
       });
     } catch (error) {
       console.error('确保 schema 失败:', error);
