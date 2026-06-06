@@ -141,7 +141,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div id="app">
+  <div id="app" :class="{ 'is-login-page': route.path === '/login' }">
     <!-- 条件渲染：只在非登录页面显示导航组件 -->
     <template v-if="!route.path.includes('/login')">
       <!-- 通用顶部导航栏 -->
@@ -233,6 +233,12 @@ onMounted(() => {
   min-height: calc(100vh - 60px);
   font-family: var(--el-font-family);
   overflow: hidden;
+}
+
+/* 登录页时 #app 需要占满整个视口 */
+#app.is-login-page {
+  min-height: 100vh;
+  overflow: visible;
 }
 
 /* 全局样式 */

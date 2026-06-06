@@ -71,9 +71,6 @@
         </el-form-item>
       </el-form>
 
-      <div class="login-footer">
-        <p class="footer-hint">默认账号：admin / 学号</p>
-      </div>
     </div>
   </div>
 </template>
@@ -125,8 +122,8 @@ const handleLogin = async () => {
       updateUserInfo(userInfo);
     }
 
-    // 根据用户角色跳转到不同页面
-    if (result.user && result.user.role === 'admin') {
+    // 根据用户角色跳转到不同页面（admin 和 super_admin 都进入管理页）
+    if (result.user && (result.user.role === 'admin' || result.user.role === 'super_admin')) {
       router.push('/admin');
     } else {
       router.push('/home');
@@ -144,52 +141,53 @@ const handleLogin = async () => {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100%;
   min-height: 100vh;
-  background: var(--bg-primary);
+  /* 深色全屏渐变背景，确保宽屏下左右两侧也有颜色 */
+  background:
+    radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.25) 0%, transparent 45%),
+    radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.20) 0%, transparent 45%),
+    linear-gradient(135deg, #818cf8 0%, #a5b4fc 25%, #c4b5fd 50%, #93c5fd 75%, #f9a8d4 100%);
   position: relative;
   overflow: hidden;
   padding: 20px;
 }
 
-/* 背景装饰 */
+/* 背景装饰 — 无边框限制的大光斑 */
 .bg-decoration {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  overflow: hidden;
 }
 
 .bg-circle {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.4;
+  filter: blur(120px);
 }
 
 .bg-circle-1 {
-  width: 400px;
-  height: 400px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  top: -100px;
-  right: -100px;
+  width: 70vw;
+  height: 70vw;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.45), rgba(139, 92, 246, 0.35));
+  top: -20%;
+  right: -10%;
 }
 
 .bg-circle-2 {
-  width: 300px;
-  height: 300px;
-  background: linear-gradient(135deg, #06b6d4, #6366f1);
-  bottom: -50px;
-  left: -50px;
-  opacity: 0.25;
+  width: 60vw;
+  height: 60vw;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(99, 102, 241, 0.3));
+  bottom: -15%;
+  left: -15%;
 }
 
 .bg-circle-3 {
-  width: 200px;
-  height: 200px;
-  background: linear-gradient(135deg, #ec4899, #8b5cf6);
-  top: 40%;
-  left: 30%;
-  opacity: 0.15;
+  width: 50vw;
+  height: 50vw;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(139, 92, 246, 0.2));
+  top: 35%;
+  left: 25%;
 }
 
 .login-form-wrapper {
@@ -198,10 +196,24 @@ const handleLogin = async () => {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
   position: relative;
   z-index: 1;
   border: 1px solid var(--border-color);
+}
+
+@media (min-width: 1920px) {
+  .login-form-wrapper {
+    max-width: 560px;
+    padding: 64px 56px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .login-form-wrapper {
+    max-width: 640px;
+    padding: 72px 64px;
+  }
 }
 
 /* 品牌区域 */
@@ -256,18 +268,6 @@ const handleLogin = async () => {
   font-weight: 600;
   border-radius: var(--radius-sm);
   margin-top: 8px;
-}
-
-/* 底部提示 */
-.login-footer {
-  margin-top: 24px;
-  text-align: center;
-}
-
-.footer-hint {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  margin: 0;
 }
 
 /* 响应式 */
