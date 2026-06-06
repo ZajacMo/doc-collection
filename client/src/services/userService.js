@@ -139,10 +139,10 @@ export const isLoggedIn = () => {
   return !!localStorage.getItem('token');
 };
 
-// 检查用户是否为管理员
+// 检查用户是否为管理员（admin 或 super_admin）
 export const isAdmin = () => {
   const user = getCurrentUserInfo();
-  return user ? user.role === 'admin' : false;
+  return user ? (user.role === 'admin' || user.role === 'super_admin') : false;
 };
 
 // 批量导入用户

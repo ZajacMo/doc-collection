@@ -72,10 +72,10 @@
             >
               详情
             </el-button>
-            <el-button 
-              v-if="userInfo?.role === 'admin'"
-              type="danger" 
-              size="small" 
+            <el-button
+              v-if="userInfo?.role === 'admin' || userInfo?.role === 'super_admin'"
+              type="danger"
+              size="small"
               @click="onDeleteClick(row.id, row.title)"
             >
               删除

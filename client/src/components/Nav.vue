@@ -42,7 +42,7 @@ const handleMenuSelect = (index) => {
         <el-icon><DocumentCopy /></el-icon>
         <template #title><span>作业</span></template>
       </el-menu-item>
-      <el-menu-item index="3" v-show="userInfo?.user?.role === 'admin' || userInfo?.role === 'admin'">
+      <el-menu-item index="3" v-show="userInfo?.user?.role === 'admin' || userInfo?.user?.role === 'super_admin' || userInfo?.role === 'admin' || userInfo?.role === 'super_admin'">
         <el-icon><Management /></el-icon>
         <template #title><span>管理</span></template>
       </el-menu-item>

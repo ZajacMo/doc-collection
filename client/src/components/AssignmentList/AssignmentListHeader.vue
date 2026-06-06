@@ -1,9 +1,9 @@
 <template>
   <div class="page-header">
     <h2>作业</h2>
-    <el-button 
-      v-if="userInfo?.role === 'admin'" 
-      type="primary" 
+    <el-button
+      v-if="userInfo?.role === 'admin' || userInfo?.role === 'super_admin'"
+      type="primary"
       @click="onCreateClick"
     >
       

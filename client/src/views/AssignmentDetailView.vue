@@ -45,7 +45,7 @@
       <!-- 操作按钮 -->
       <div class="action-buttons">
         <el-button
-          v-if="userInfo?.role == 'admin'"
+          v-if="userInfo?.role === 'admin' || userInfo?.role === 'super_admin'"
           type="warning"
           size="large"
           @click="showUpdateDialog"
@@ -53,7 +53,7 @@
           编辑作业
         </el-button>
         <el-button
-          v-if="userInfo?.role == 'admin'"
+          v-if="userInfo?.role === 'admin' || userInfo?.role === 'super_admin'"
           type="primary"
           size="large"
           @click="exportUnsubmittedList"
@@ -61,7 +61,7 @@
           导出名单
         </el-button>
         <el-button
-          v-if="userInfo?.role == 'admin'"
+          v-if="userInfo?.role === 'admin' || userInfo?.role === 'super_admin'"
           type="success"
           size="large"
           @click="handleDownloadAll"
@@ -69,7 +69,7 @@
           下载作业
         </el-button>
         <el-button
-          v-if="userInfo?.role !== 'admin' && submissionInfo?.submissionInfo?.id"
+          v-if="userInfo?.role !== 'admin' && userInfo?.role !== 'super_admin' && submissionInfo?.submissionInfo?.id"
           type="success"
           size="large"
           @click="downloadMyFile"
@@ -80,18 +80,18 @@
     </div>
     
     <!-- 提交情况统计 -->
-    <SubmissionStats 
-      v-if="assignment && userInfo?.role === 'admin'" 
+    <SubmissionStats
+      v-if="assignment && (userInfo?.role === 'admin' || userInfo?.role === 'super_admin')"
       :total-students="allStudents"
       :submitted-count="submissionList.filter(sub => sub.status === 'submitted').length"
     />
 
     <!-- 提交列表 -->
-    <SubmissionList 
-      v-if="userInfo?.role === 'admin'"
+    <SubmissionList
+      v-if="userInfo?.role === 'admin' || userInfo?.role === 'super_admin'"
       :submission-list="submissionList"
       :user-submission="submissionInfo"
-      :is-admin="userInfo?.role === 'admin'"
+      :is-admin="userInfo?.role === 'admin' || userInfo?.role === 'super_admin'"
       @download="downloadFile"
       @delete="deleteSubmission"
     />
@@ -203,7 +203,7 @@ const loadData = async () => {
     }
 
     // 如果是管理员，获取所有提交记录和学生总数
-    if (currentUserInfo?.role === 'admin') {
+    if (currentUserInfo?.role === 'admin' || currentUserInfo?.role === 'super_admin') {
       const submissionListData = await getSubmissionsByAssignment(assignmentId);
       submissionList.value = submissionListData || [];
       

@@ -20,7 +20,7 @@ const routes = [
       const token = localStorage.getItem('token');
       if (userInfo && token) {
         const role = userInfo.user?.role || userInfo.role;
-        return role === 'admin' ? '/admin' : '/home';
+        return (role === 'admin' || role === 'super_admin') ? '/admin' : '/home';
       }
       return '/login';
     }
@@ -86,7 +86,7 @@ router.beforeEach((to, from, next) => {
       // 检查是否需要管理员权限
       // 兼容不同的用户信息结构
       const userRole = userInfo.user?.role || userInfo.role;
-      if (to.meta.requiresAdmin && userRole !== 'admin') {
+      if (to.meta.requiresAdmin && userRole !== 'admin' && userRole !== 'super_admin') {
         // 不是管理员，重定向到首页
         console.log('需要管理员权限，重定向到首页');
         next('/home');
@@ -101,7 +101,7 @@ router.beforeEach((to, from, next) => {
       // 兼容不同的用户信息结构
       const userRole = userInfo.user?.role || userInfo.role;
       // 根据用户角色重定向
-      next(userRole === 'admin' ? '/admin' : '/home');
+      next((userRole === 'admin' || userRole === 'super_admin') ? '/admin' : '/home');
     } else {
       next();
     }
