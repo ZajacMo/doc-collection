@@ -51,6 +51,11 @@ docker-compose up --build
 - `server/` — Express API with SQLite database and file upload handling
 - Root `package.json` only has orchestration scripts; real dependencies are in each subfolder
 
+### Nginx Caching (`client/nginx.conf`)
+- `index.html` — no-cache headers (prevents stale SPA shells after deploy).
+- JS/CSS — no-cache headers (development-friendly; update for production if needed).
+- Images/fonts — 7-day `Cache-Control: public`.
+
 ### Database Layer (`server/db/`)
 - `db.js` — Creates/opens a SQLite file at `server/db/database.db`. Exports `initDatabase()`, `getDb()`, `closeDb()`.
 - `migrate.js` — Recreates tables, imports default users from `server/data/名单.xls` (if present), and seeds `assignments.json` / `submissions.json`.
@@ -79,14 +84,20 @@ docker-compose up --build
 - `GET /api/assignments/:id/download-all` uses the `archiver` library to stream a ZIP of all submitted files.
 - It validates that every file on disk exists before starting the archive; if any are missing it returns `400` with details.
 
-### File Type Restrictions
+### File Type & Size Restrictions
 - Each assignment stores allowed extensions in a `fileTypes` JSON column (e.g. `["pdf","docx"]`).
 - Validated on upload (`uploadController.js`) and again on submission creation (`submissionController.js`).
-- Default max file size is 20MB, configurable via `MAX_FILE_SIZE` in `server/.env`.
+- **Global max file size**: default 20MB, configurable via `MAX_FILE_SIZE` in `server/.env`.
+- **Per-assignment max file size**: the `assignments` table has a `maxFileSize` column (INTEGER, MB). When creating or updating an assignment, admins can set a custom limit between 1–500MB. If unset, it falls back to the global `MAX_FILE_SIZE` value. The Multer global ceiling is 500MB to accommodate this.
+- The upload endpoint reads `maxFileSize` from the assignment record and validates against it, returning `413` if exceeded.
 
 ### Environment Configuration
 - `server/.env` controls `PORT`, `UPLOAD_DIR`, `DB_PATH`, `MAX_FILE_SIZE`, `COLLECTION_CYCLE`.
 - The `DB_PATH` env var is used in `server/index.js` to `require()` the database module (it defaults to `./db/db`).
+
+### Database Auto-Migration
+- `db.js` includes `ensureSchema()` which runs at startup and adds missing columns (e.g. `password` on `users`, `maxFileSize` on `assignments`) via `ALTER TABLE`.
+- `migrate.js` uses a `migrations` table to track applied migrations; each migration runs only once.
 
 ## Default Accounts (password = same as username/studentId)
 - Admin: `admin` / `admin`
