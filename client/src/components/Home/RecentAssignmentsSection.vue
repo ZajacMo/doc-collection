@@ -47,7 +47,6 @@
             <el-button
               type="primary"
               size="small"
-              text
               @click="goToDetail(row.id)"
             >
               详情
