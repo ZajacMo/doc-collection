@@ -104,6 +104,49 @@ const ensureSchema = () => {
 };
 
 /**
+ * 确保 classes 和 user_classes 表存在（应用启动时调用）
+ */
+const ensureClassTables = () => {
+  return new Promise((resolve, reject) => {
+    try {
+      const db = getDb();
+      db.serialize(() => {
+        // 创建 classes 表
+        db.run(`
+          CREATE TABLE IF NOT EXISTS classes (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            grade TEXT,
+            description TEXT,
+            createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        // 创建 user_classes 关联表
+        db.run(`
+          CREATE TABLE IF NOT EXISTS user_classes (
+            user_id TEXT NOT NULL,
+            class_id TEXT NOT NULL,
+            PRIMARY KEY (user_id, class_id),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
+          )
+        `, (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            console.log('classes 和 user_classes 表已就绪');
+            resolve();
+          }
+        });
+      });
+    } catch (error) {
+      console.error('确保班级表失败:', error);
+      reject(error);
+    }
+  });
+};
+
+/**
  * 为 password 为 NULL 或空字符串的现有用户填充默认密码
  * 默认密码使用学号的 bcrypt 哈希
  */
@@ -327,6 +370,7 @@ module.exports = {
   getDb,
   closeDb,
   ensureSchema,
+  ensureClassTables,
   initRbacSchema,
   getRolePermissions
 };

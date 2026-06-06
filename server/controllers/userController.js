@@ -58,6 +58,107 @@ const getOne = async (sql, params = []) => {
 const USER_FIELDS = 'id, studentId, name, role, className, major, email, createdAt';
 
 /**
+ * 为用户对象附加关联的班级列表
+ * @param {Object} user - 用户对象
+ * @returns {Object} 附加 classes 数组后的用户对象
+ */
+const attachUserClasses = async (user) => {
+  if (!user) return user;
+  const classes = await query(
+    `SELECT c.id, c.name, c.grade
+     FROM classes c
+     JOIN user_classes uc ON c.id = uc.class_id
+     WHERE uc.user_id = ?
+     ORDER BY c.name`,
+    [user.id]
+  );
+  user.classes = classes || [];
+  return user;
+};
+
+/**
+ * 为多个用户对象附加关联的班级列表
+ */
+const attachUsersClasses = async (users) => {
+  if (!Array.isArray(users) || users.length === 0) return users;
+  const userIds = users.map(u => u.id);
+  const placeholders = userIds.map(() => '?').join(',');
+  const classRows = await query(
+    `SELECT uc.user_id, c.id, c.name, c.grade
+     FROM classes c
+     JOIN user_classes uc ON c.id = uc.class_id
+     WHERE uc.user_id IN (${placeholders})
+     ORDER BY c.name`,
+    userIds
+  );
+
+  const classMap = new Map();
+  for (const row of classRows) {
+    if (!classMap.has(row.user_id)) {
+      classMap.set(row.user_id, []);
+    }
+    classMap.get(row.user_id).push({ id: row.id, name: row.name, grade: row.grade });
+  }
+
+  for (const user of users) {
+    user.classes = classMap.get(user.id) || [];
+  }
+  return users;
+};
+
+/**
+ * 设置用户的班级关联（覆盖式）
+ * @param {string} userId - 用户ID
+ * @param {string[]} classIds - 班级ID数组
+ */
+const setUserClasses = async (userId, classIds) => {
+  if (!Array.isArray(classIds)) return;
+  const db = getDb();
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+      db.run('DELETE FROM user_classes WHERE user_id = ?', [userId], (err) => {
+        if (err) {
+          db.run('ROLLBACK');
+          reject(err);
+          return;
+        }
+        if (classIds.length > 0) {
+          const stmt = db.prepare('INSERT OR IGNORE INTO user_classes (user_id, class_id) VALUES (?, ?)');
+          let completed = 0;
+          let hasError = false;
+          for (const classId of classIds) {
+            stmt.run(userId, classId, (runErr) => {
+              if (hasError) return;
+              if (runErr) {
+                hasError = true;
+                stmt.finalize();
+                db.run('ROLLBACK');
+                reject(runErr);
+                return;
+              }
+              completed++;
+              if (completed === classIds.length) {
+                stmt.finalize();
+                db.run('COMMIT', (commitErr) => {
+                  if (commitErr) reject(commitErr);
+                  else resolve();
+                });
+              }
+            });
+          }
+        } else {
+          db.run('COMMIT', (commitErr) => {
+            if (commitErr) reject(commitErr);
+            else resolve();
+          });
+        }
+      });
+    });
+  });
+};
+
+/**
  * 生成下一个用户 ID（基于现有最大整数值 +1）
  */
 const generateNextId = async () => {
@@ -69,6 +170,7 @@ const generateNextId = async () => {
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await query(`SELECT ${USER_FIELDS} FROM users`);
+    await attachUsersClasses(users);
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: '获取用户列表失败', error: error.message });
@@ -80,6 +182,7 @@ exports.getUserById = async (req, res) => {
   try {
     const user = await getOne(`SELECT ${USER_FIELDS} FROM users WHERE id = ?`, [req.params.id]);
     if (user) {
+      await attachUserClasses(user);
       res.json(user);
     } else {
       res.status(404).json({ message: '用户不存在' });
@@ -95,7 +198,7 @@ exports.createUser = async (req, res) => {
     // 生成下一个用户 ID
     const newId = await generateNextId();
 
-    const { studentId, name, role = 'student', className = '', major = '', email = '', password } = req.body;
+    const { studentId, name, role = 'student', className = '', major = '', email = '', password, classIds = [] } = req.body;
     if (!studentId || typeof studentId !== 'string' || studentId.trim() === '') {
       return res.status(400).json({ message: '学号不能为空' });
     }
@@ -111,6 +214,11 @@ exports.createUser = async (req, res) => {
       [newId, studentId, name, role, className, major, email, hashedPassword]
     );
 
+    // 设置班级关联
+    if (Array.isArray(classIds) && classIds.length > 0) {
+      await setUserClasses(newId, classIds);
+    }
+
     const newUser = {
       id: newId,
       studentId,
@@ -118,8 +226,10 @@ exports.createUser = async (req, res) => {
       role,
       className,
       major,
-      email
+      email,
+      classes: []
     };
+    await attachUserClasses(newUser);
 
     res.status(201).json(newUser);
   } catch (error) {
@@ -134,7 +244,7 @@ exports.createUser = async (req, res) => {
 // 更新用户
 exports.updateUser = async (req, res) => {
   try {
-    const { studentId, name, role, className, major, email, password } = req.body;
+    const { studentId, name, role, className, major, email, password, classIds } = req.body;
 
     // 构建更新字段
     const updates = [];
@@ -169,24 +279,38 @@ exports.updateUser = async (req, res) => {
       params.push(await bcrypt.hash(password, 10));
     }
 
-    if (updates.length === 0) {
+    // 处理班级关联更新
+    if (classIds !== undefined) {
+      if (Array.isArray(classIds)) {
+        await setUserClasses(req.params.id, classIds);
+      }
+    }
+
+    if (updates.length === 0 && classIds === undefined) {
       return res.status(400).json({ message: '没有要更新的字段' });
     }
 
-    // 添加ID参数
-    params.push(req.params.id);
+    if (updates.length > 0) {
+      // 添加ID参数
+      params.push(req.params.id);
 
-    const result = await run(
-      `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
-      params
-    );
+      const result = await run(
+        `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
+        params
+      );
 
-    if (result.changes > 0) {
-      const updatedUser = await getOne(`SELECT ${USER_FIELDS} FROM users WHERE id = ?`, [req.params.id]);
-      res.json(updatedUser);
-    } else {
-      res.status(404).json({ message: '用户不存在' });
+      if (result.changes === 0) {
+        // 检查一下用户是否存在（可能只更新了classIds）
+        const userExists = await getOne('SELECT id FROM users WHERE id = ?', [req.params.id]);
+        if (!userExists) {
+          return res.status(404).json({ message: '用户不存在' });
+        }
+      }
     }
+
+    const updatedUser = await getOne(`SELECT ${USER_FIELDS} FROM users WHERE id = ?`, [req.params.id]);
+    await attachUserClasses(updatedUser);
+    res.json(updatedUser);
   } catch (error) {
     res.status(500).json({ message: '更新用户失败', error: error.message });
   }
@@ -235,7 +359,7 @@ exports.batchCreateUsers = async (req, res) => {
     let nextId = parseInt(await generateNextId(), 10);
 
     for (const userData of users) {
-      const { studentId, name, role = 'student', className = '', major = '', email = '' } = userData;
+      const { studentId, name, role = 'student', className = '', major = '', email = '', classIds = [] } = userData;
 
       // 校验必填字段
       if (!studentId || !name) {
@@ -254,10 +378,17 @@ exports.batchCreateUsers = async (req, res) => {
 
       try {
         const hashedPassword = await bcrypt.hash(studentId, 10);
+        const currentId = nextId.toString();
         await run(
           'INSERT INTO users (id, studentId, name, role, className, major, email, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          [nextId.toString(), studentId, name, role, className, major, email, hashedPassword]
+          [currentId, studentId, name, role, className, major, email, hashedPassword]
         );
+
+        // 设置班级关联
+        if (Array.isArray(classIds) && classIds.length > 0) {
+          await setUserClasses(currentId, classIds);
+        }
+
         nextId++;
         results.successCount++;
       } catch (error) {

@@ -46,6 +46,18 @@
             <el-button size="small" @click="clearAllStudents">清空</el-button>
             <span class="select-count">已选 {{ formData.relativeStudents.length }} 人</span>
           </div>
+          <div v-if="studentGroups.length > 0" class="group-select-toolbar">
+            <span style="font-size: 12px; color: var(--el-text-color-secondary);">按班级选择：</span>
+            <el-button
+              v-for="group in studentGroups"
+              :key="group.className"
+              link
+              size="small"
+              @click="selectGroupStudents(group)"
+            >
+              {{ group.className }}
+            </el-button>
+          </div>
           <el-select
             v-model="formData.relativeStudents"
             multiple
@@ -270,20 +282,43 @@ const loadStudentOptions = async () => {
 
     studentOptions.value = students.map(s => ({ label: s.name, value: s.studentId }));
 
+    // 按 classes 数组分组（一个学生可出现在多个班级组中）
     const groupMap = new Map();
     for (const s of students) {
-      const className = s.className?.trim() || '未分组';
-      if (!groupMap.has(className)) {
-        groupMap.set(className, []);
+      const userClasses = s.classes || [];
+      if (userClasses.length > 0) {
+        for (const cls of userClasses) {
+          const className = cls.name?.trim() || '未分组';
+          if (!groupMap.has(className)) {
+            groupMap.set(className, new Map());
+          }
+          groupMap.get(className).set(s.studentId, { label: s.name, value: s.studentId });
+        }
+      } else if (s.className?.trim()) {
+        // 兼容旧数据：使用 className 字段
+        const className = s.className.trim();
+        if (!groupMap.has(className)) {
+          groupMap.set(className, new Map());
+        }
+        groupMap.get(className).set(s.studentId, { label: s.name, value: s.studentId });
+      } else {
+        const className = '未分组';
+        if (!groupMap.has(className)) {
+          groupMap.set(className, new Map());
+        }
+        groupMap.get(className).set(s.studentId, { label: s.name, value: s.studentId });
       }
-      groupMap.get(className).push({ label: s.name, value: s.studentId });
     }
+
     const sortedEntries = [...groupMap.entries()].sort((a, b) => {
       if (a[0] === '未分组') return 1;
       if (b[0] === '未分组') return -1;
       return a[0].localeCompare(b[0], 'zh-CN');
     });
-    studentGroups.value = sortedEntries.map(([className, students]) => ({ className, students }));
+    studentGroups.value = sortedEntries.map(([className, studentMap]) => ({
+      className,
+      students: [...studentMap.values()]
+    }));
   } catch (e) {
     studentOptions.value = [];
     studentGroups.value = [];
@@ -323,6 +358,13 @@ const selectAllStudents = () => {
 
 const clearAllStudents = () => {
   formData.relativeStudents = [];
+};
+
+const selectGroupStudents = (group) => {
+  const groupIds = group.students.map(s => s.value);
+  const set = new Set(formData.relativeStudents);
+  groupIds.forEach(id => set.add(id));
+  formData.relativeStudents = [...set];
 };
 
 // ============ 对话框控制 ============
@@ -493,5 +535,14 @@ watch(() => props.assignment, () => {
 
 .select-box :deep(.el-collapse-item__content) {
   padding-bottom: 8px;
+}
+
+/* 按班级快速选择 */
+.group-select-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 </style>

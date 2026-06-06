@@ -51,6 +51,11 @@
         />
       </el-tab-pane>
 
+      <!-- 班级管理 -->
+      <el-tab-pane label="班级管理" name="classes">
+        <class-management @data-updated="loadData" />
+      </el-tab-pane>
+
       <!-- 角色权限管理（仅超级管理员） -->
       <el-tab-pane v-if="isSuperAdmin()" label="角色权限" name="roles">
         <role-management />
@@ -85,6 +90,7 @@ import AssignmentManagement from '../components/admin/AssignmentManagement.vue';
 import SubmissionManagement from '../components/admin/SubmissionManagement.vue';
 import DialogComponents from '../components/admin/DialogComponents.vue';
 import RoleManagement from '../components/admin/RoleManagement.vue';
+import ClassManagement from '../components/admin/ClassManagement.vue';
 
 const router = useRouter();
 const activeTab = ref('overview');

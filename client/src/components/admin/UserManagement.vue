@@ -32,7 +32,22 @@
       <el-table-column type="index" label="序号" width="80"></el-table-column>
       <el-table-column prop="studentId" label="学号" width="120"></el-table-column>
       <el-table-column prop="name" label="姓名" width="120"></el-table-column>
-      <el-table-column prop="className" label="班级" width="120"></el-table-column>
+      <el-table-column label="班级" width="200">
+        <template #default="{ row }">
+          <template v-if="row.classes && row.classes.length > 0">
+            <el-tag
+              v-for="cls in row.classes"
+              :key="cls.id"
+              size="small"
+              style="margin-right: 4px; margin-bottom: 2px;"
+            >
+              {{ cls.name }}
+            </el-tag>
+          </template>
+          <span v-else-if="row.className">{{ row.className }}</span>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="role" label="角色" width="100">
         <template #default="{ row }">
           <el-tag
@@ -149,11 +164,17 @@ const filteredUsers = computed(() => {
 
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase();
-    result = result.filter(user =>
-      user.studentId?.toLowerCase().includes(keyword) ||
-      user.name?.toLowerCase().includes(keyword) ||
-      user.className?.toLowerCase().includes(keyword)
-    );
+    result = result.filter(user => {
+      const classNames = (user.classes || []).map(c => c.name?.toLowerCase() || '');
+      const classNameMatch = classNames.some(n => n.includes(keyword));
+      const legacyMatch = (user.className?.toLowerCase() || '').includes(keyword);
+      return (
+        user.studentId?.toLowerCase().includes(keyword) ||
+        user.name?.toLowerCase().includes(keyword) ||
+        classNameMatch ||
+        legacyMatch
+      );
+    });
   }
 
   return result;

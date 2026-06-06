@@ -8,6 +8,7 @@ const os = require('os');
 
 // 数据库连接模块
 const { initDatabase, closeDb, ensureSchema, initRbacSchema } = require(process.env.DB_PATH || './db/db');
+const { runMigration } = require('./db/migrate');
 
 // 创建Express应用
 const app = express();
@@ -72,7 +73,11 @@ async function startServer() {
     await initDatabase();
     console.log('数据库初始化完成');
 
-    // 确保数据库 schema 是最新的
+    // 执行数据库迁移（创建表、导入默认数据、迁移班级数据）
+    // initDb: false 因为上面已初始化；closeConnection: false 因为后面还要用
+    await runMigration({ initDb: false, closeConnection: false });
+
+    // 确保数据库 schema 是最新的（双重保险）
     await ensureSchema();
     console.log('数据库 schema 检查完成');
 
@@ -110,6 +115,7 @@ async function startServer() {
     const submissionRoutes = require('./routes/submissions');
     const roleRoutes = require('./routes/roles');
     const permissionRoutes = require('./routes/permissions');
+    const classRoutes = require('./routes/classes');
     const uploadRoutes = require('./controllers/uploadController'); // 直接使用上传控制器作为路由
 
     app.use('/api/users', userRoutes);
@@ -117,6 +123,7 @@ async function startServer() {
     app.use('/api/submissions', submissionRoutes);
     app.use('/api/roles', roleRoutes);
     app.use('/api/permissions', permissionRoutes);
+    app.use('/api/classes', classRoutes);
     app.use('/api/upload', uploadRoutes); // 添加文件上传路由
     
     // 健康检查接口

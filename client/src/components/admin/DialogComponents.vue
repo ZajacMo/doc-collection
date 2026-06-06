@@ -28,6 +28,8 @@
               请上传包含用户信息的Excel文件，支持 .xls 和 .xlsx 格式
               <br>
               表格需包含列：学号、姓名、班级（可选：角色、专业、邮箱）
+              <br>
+              班级列支持逗号分隔多个班级，会自动匹配系统中已有的班级名称
             </div>
           </template>
         </el-upload>
@@ -60,7 +62,13 @@
         <el-table-column type="index" label="序号" width="60" />
         <el-table-column prop="studentId" label="学号" width="120" />
         <el-table-column prop="name" label="姓名" width="100" />
-        <el-table-column prop="className" label="班级" width="120" />
+        <el-table-column prop="className" label="班级" width="150">
+          <template #default="{ row }">
+            {{ row.className || '-' }}
+            <el-tag v-if="row.classIds.length > 0" type="success" size="small">已匹配 {{ row.classIds.length }} 个</el-tag>
+            <el-tag v-else-if="row.className" type="warning" size="small">未匹配</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="role" label="角色" width="100">
           <template #default="{ row }">
             <el-tag :type="row.role === 'super_admin' ? 'warning' : row.role === 'admin' ? 'danger' : 'primary'" size="small">
@@ -114,8 +122,15 @@
       <el-form-item label="姓名" prop="name">
         <el-input v-model="addUserForm.name"></el-input>
       </el-form-item>
-      <el-form-item label="班级" prop="className">
-        <el-input v-model="addUserForm.className"></el-input>
+      <el-form-item label="班级" prop="classIds">
+        <el-select v-model="addUserForm.classIds" multiple placeholder="选择班级" style="width: 100%">
+          <el-option
+            v-for="cls in allClasses"
+            :key="cls.id"
+            :label="cls.name"
+            :value="cls.id"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="角色" prop="role">
         <el-select v-model="addUserForm.role">
@@ -154,8 +169,15 @@
       <el-form-item label="姓名" prop="name">
         <el-input v-model="editUserForm.name"></el-input>
       </el-form-item>
-      <el-form-item label="班级" prop="className">
-        <el-input v-model="editUserForm.className"></el-input>
+      <el-form-item label="班级" prop="classIds">
+        <el-select v-model="editUserForm.classIds" multiple placeholder="选择班级" style="width: 100%">
+          <el-option
+            v-for="cls in allClasses"
+            :key="cls.id"
+            :label="cls.name"
+            :value="cls.id"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="角色" prop="role">
         <el-select v-model="editUserForm.role">
@@ -192,6 +214,7 @@ import * as XLSX from 'xlsx';
 import { createUser, updateUser, importUsersBatch } from '../../services/userService';
 import { createAssignment } from '../../services/assignmentService';
 import { getAllRoles } from '../../services/roleService.js';
+import { getAllClasses } from '../../services/classService.js';
 import AssignmentFormDialog from '../AssignmentFormDialog.vue';
 
 const props = defineProps({
@@ -268,7 +291,10 @@ watch(localCreateAssignmentDialogVisible, (newVal) => {
 // 监听编辑用户数据变化，确保表单正确填充
 watch(() => props.editUserData, (newVal) => {
   if (newVal) {
-    editUserForm.value = { ...newVal };
+    editUserForm.value = {
+      ...newVal,
+      classIds: (newVal.classes || []).map(c => c.id)
+    };
   }
 }, { deep: true, immediate: true });
 
@@ -280,6 +306,9 @@ const availableRoles = ref([
   { label: '学生', value: 'student' },
   { label: '管理员', value: 'admin' }
 ]);
+
+// 班级列表
+const allClasses = ref([]);
 
 // 加载可用角色列表
 const loadRoles = async () => {
@@ -301,6 +330,16 @@ const loadRoles = async () => {
   }
 };
 
+// 加载班级列表
+const loadClasses = async () => {
+  try {
+    const classes = await getAllClasses();
+    allClasses.value = Array.isArray(classes) ? classes : [];
+  } catch (error) {
+    console.error('加载班级列表失败:', error);
+  }
+};
+
 const getRoleLabel = (roleCode) => {
   const found = availableRoles.value.find(r => r.value === roleCode);
   return found ? found.label : roleCode;
@@ -308,13 +347,14 @@ const getRoleLabel = (roleCode) => {
 
 onMounted(() => {
   loadRoles();
+  loadClasses();
 });
 
 // 添加用户表单
 const addUserForm = ref({
   studentId: '',
   name: '',
-  className: '',
+  classIds: [],
   role: 'student'
 });
 
@@ -323,7 +363,7 @@ const editUserForm = ref({
   id: '',
   studentId: '',
   name: '',
-  className: '',
+  classIds: [],
   role: 'student'
 });
 
@@ -336,10 +376,6 @@ const addUserRules = ref({
   name: [
     { required: true, message: '请输入姓名', trigger: 'blur' },
     { min: 2, max: 20, message: '姓名长度在 2 到 20 个字符之间', trigger: 'blur' }
-  ],
-  className: [
-    { required: true, message: '请输入班级', trigger: 'blur' },
-    { min: 2, max: 20, message: '班级长度在 2 到 20 个字符之间', trigger: 'blur' }
   ]
 });
 
@@ -347,10 +383,6 @@ const editUserRules = ref({
   name: [
     { required: true, message: '请输入姓名', trigger: 'blur' },
     { min: 2, max: 20, message: '姓名长度在 2 到 20 个字符之间', trigger: 'blur' }
-  ],
-  className: [
-    { required: true, message: '请输入班级', trigger: 'blur' },
-    { min: 2, max: 20, message: '班级长度在 2 到 20 个字符之间', trigger: 'blur' }
   ]
 });
 
@@ -376,7 +408,7 @@ const resetAddUserForm = () => {
   addUserForm.value = {
     studentId: '',
     name: '',
-    className: '',
+    classIds: [],
     role: 'student'
   };
   if (addUserFormRef.value) {
@@ -457,10 +489,23 @@ const parsePreviewData = (jsonData) => {
     };
     const mappedRole = knownRoleMap[role] || role;
 
+    // 根据班级名称匹配已有的 classIds（支持逗号分隔多个班级）
+    const classIds = [];
+    if (className) {
+      const names = className.split(/[,，]/).map(n => n.trim()).filter(Boolean);
+      for (const n of names) {
+        const matched = allClasses.value.find(c => c.name === n);
+        if (matched) {
+          classIds.push(matched.id);
+        }
+      }
+    }
+
     return {
       studentId,
       name,
       className,
+      classIds,
       role: mappedRole,
       major,
       email,
@@ -506,9 +551,10 @@ const resetImport = () => {
 const downloadTemplate = () => {
   const headers = ['学号', '姓名', '班级', '角色', '专业', '邮箱'];
   const firstRole = availableRoles.value.find(r => r.value === 'student') || availableRoles.value[0] || { value: 'student', label: '学生' };
+  const firstClass = allClasses.value[0]?.name || '计算机1班';
   const example = [
-    { '学号': '2023001', '姓名': '张三', '班级': '计算机1班', '角色': firstRole.value, '专业': '计算机科学', '邮箱': 'zhangsan@example.com' },
-    { '学号': '2023002', '姓名': '李四', '班级': '计算机1班', '角色': firstRole.value, '专业': '计算机科学', '邮箱': 'lisi@example.com' }
+    { '学号': '2023001', '姓名': '张三', '班级': firstClass, '角色': firstRole.value, '专业': '计算机科学', '邮箱': 'zhangsan@example.com' },
+    { '学号': '2023002', '姓名': '李四', '班级': firstClass, '角色': firstRole.value, '专业': '计算机科学', '邮箱': 'lisi@example.com' }
   ];
 
   const worksheet = XLSX.utils.json_to_sheet(example, { header: headers });
