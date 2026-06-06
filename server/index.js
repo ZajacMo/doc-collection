@@ -149,7 +149,7 @@ async function startServer() {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(413).json({
           success: false,
-          message: '文件大小超过限制'
+          message: '文件大小超过系统全局限制（最大500MB）'
         });
       }
       

@@ -121,6 +121,19 @@
           </el-collapse>
         </div>
       </el-form-item>
+
+      <!-- 文件大小限制 -->
+      <el-form-item label="文件大小限制" prop="maxFileSize">
+        <el-input-number
+          v-model="formData.maxFileSize"
+          :min="1"
+          :max="500"
+          :step="1"
+          step-strictly
+          style="width: 160px"
+        />
+        <span style="margin-left: 8px; color: var(--el-text-color-secondary);">MB</span>
+      </el-form-item>
     </el-form>
 
     <template #footer>
@@ -222,7 +235,8 @@ const formData = reactive({
   description: '',
   deadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
   fileTypes: [],
-  relativeStudents: []
+  relativeStudents: [],
+  maxFileSize: 20
 });
 
 // ============ 验证规则 ============
@@ -331,6 +345,7 @@ const resetForm = () => {
     formData.deadline = new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
     formData.fileTypes = [];
     formData.relativeStudents = [];
+    formData.maxFileSize = 20;
     unlimitedTypes.value = true;
     unlimitedStudents.value = true;
   } else if (props.assignment) {
@@ -341,6 +356,7 @@ const resetForm = () => {
     unlimitedTypes.value = Array.isArray(formData.fileTypes) && formData.fileTypes.length === 0;
     formData.relativeStudents = Array.isArray(props.assignment.relativeStudents) ? [...props.assignment.relativeStudents] : [];
     unlimitedStudents.value = formData.relativeStudents.length === 0;
+    formData.maxFileSize = props.assignment.maxFileSize || 20;
   }
 
   if (formRef.value) {

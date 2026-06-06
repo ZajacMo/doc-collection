@@ -63,7 +63,7 @@ const createStorage = (baseDestinationPath) => {
 // 创建上传实例
 const regularUpload = multer({ 
   storage: createStorage('uploads'),
-  limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024 } // 使用环境变量或默认10MB
+  limits: { fileSize: Math.max(500 * 1024 * 1024, parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024) } // 全局天花板500MB
 });
 
 // 普通文件上传
@@ -80,10 +80,10 @@ router.post('/', regularUpload.single('file'), async (req, res) => {
       return res.status(400).json({ message: '缺少作业ID，无法校验文件类型' });
     }
 
-    // 从数据库读取该作业允许的文件类型
+    // 从数据库读取该作业的配置
     const db = getDb();
     const assignment = await new Promise((resolve, reject) => {
-      db.get('SELECT fileTypes FROM assignments WHERE id = ?', [assignmentId], (err, row) => {
+      db.get('SELECT fileTypes, maxFileSize FROM assignments WHERE id = ?', [assignmentId], (err, row) => {
         if (err) return reject(err);
         resolve(row);
       });
@@ -99,6 +99,14 @@ router.post('/', regularUpload.single('file'), async (req, res) => {
       // 类型不匹配，删除文件并返回错误
       try { fs.unlinkSync(req.file.path); } catch {}
       return res.status(400).json({ message: '不支持的文件类型' });
+    }
+
+    // 按作业限制验证文件大小
+    const maxFileSizeMB = assignment?.maxFileSize || Math.floor((parseInt(process.env.MAX_FILE_SIZE) || 20971520) / (1024 * 1024));
+    const maxFileSizeBytes = maxFileSizeMB * 1024 * 1024;
+    if (req.file.size > maxFileSizeBytes) {
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(413).json({ message: `文件大小超过限制，该作业最大允许 ${maxFileSizeMB}MB` });
     }
 
     const renamedFileName = req.file.filename;

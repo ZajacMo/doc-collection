@@ -27,6 +27,13 @@
           <div class="info-value">{{ assignment.creator || '管理员' }}</div>
         </div>
       </div>
+      <div class="info-item">
+        <div class="info-icon icon-file-size"><Document /></div>
+        <div class="info-content">
+          <div class="info-label">文件大小限制</div>
+          <div class="info-value">{{ assignment.maxFileSize || 20 }}MB</div>
+        </div>
+      </div>
     </div>
     <div v-if="!isAssignmentExpired(assignment.deadline)" class="countdown-bar">
       <el-icon :size="16"><Timer /></el-icon>
@@ -38,7 +45,7 @@
 <script setup>
 import { formatDate } from "@/utils/date";
 import { isAssignmentExpired } from "../../services/assignmentService";
-import { Clock, Calendar, User, Timer } from '@element-plus/icons-vue';
+import { Clock, Calendar, User, Timer, Document } from '@element-plus/icons-vue';
 
 defineProps({
   assignment: {
@@ -114,6 +121,10 @@ const getCountdown = (deadline) => {
 
 .icon-creator {
   background: linear-gradient(135deg, #06b6d4, #6366f1);
+}
+
+.icon-file-size {
+  background: linear-gradient(135deg, #10b981, #06b6d4);
 }
 
 .info-label {

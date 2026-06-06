@@ -76,10 +76,15 @@ const fileFilter = (req, file, cb) => {
 };
 
 // 创建upload实例
+const GLOBAL_MAX_FILE_SIZE = Math.max(
+  500 * 1024 * 1024, // 500MB 全局天花板
+  parseInt(process.env.MAX_FILE_SIZE) || 100 * 1024 * 1024
+);
+
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 100 * 1024 * 1024, // 默认100MB
+    fileSize: GLOBAL_MAX_FILE_SIZE,
   },
   fileFilter: fileFilter
 });
@@ -89,7 +94,7 @@ exports.handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     // Multer错误
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ message: '文件大小超过限制' });
+      return res.status(400).json({ message: '文件大小超过系统全局限制（最大500MB）' });
     }
     return res.status(400).json({ message: err.message });
   } else if (err) {

@@ -166,6 +166,14 @@ exports.createAssignment = async (req, res) => {
     
     const now = new Date().toISOString();
     const { title, description = '', deadline, fileTypes = ['pdf', 'doc', 'docx'], relativeStudents = [] } = req.body;
+    let maxFileSize = req.body.maxFileSize;
+    if (maxFileSize === undefined || maxFileSize === null) {
+      maxFileSize = Math.floor((parseInt(process.env.MAX_FILE_SIZE) || 20971520) / (1024 * 1024));
+    } else {
+      maxFileSize = parseInt(maxFileSize);
+      if (isNaN(maxFileSize) || maxFileSize < 1) maxFileSize = 1;
+      if (maxFileSize > 500) maxFileSize = 500;
+    }
 
     // 确保relativeStudents列存在
     try {
@@ -178,8 +186,8 @@ exports.createAssignment = async (req, res) => {
     }
     
     await run(
-      `INSERT INTO assignments (id, title, description, deadline, createTime, updateTime, fileTypes, relativeStudents) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO assignments (id, title, description, deadline, createTime, updateTime, fileTypes, relativeStudents, maxFileSize)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newId.toString(),
         title,
@@ -188,10 +196,11 @@ exports.createAssignment = async (req, res) => {
         now,
         now,
         JSON.stringify(fileTypes),
-        JSON.stringify(Array.isArray(relativeStudents) ? relativeStudents : [])
+        JSON.stringify(Array.isArray(relativeStudents) ? relativeStudents : []),
+        maxFileSize
       ]
     );
-    
+
     const newAssignment = {
       id: newId.toString(),
       title,
@@ -200,7 +209,8 @@ exports.createAssignment = async (req, res) => {
       createTime: now,
       updateTime: now,
       fileTypes,
-      relativeStudents: Array.isArray(relativeStudents) ? relativeStudents : []
+      relativeStudents: Array.isArray(relativeStudents) ? relativeStudents : [],
+      maxFileSize
     };
     
     // 生成未提交记录（Unsubmitted）
@@ -251,11 +261,11 @@ exports.updateAssignment = async (req, res) => {
   try {
     const { title, description, deadline, fileTypes, relativeStudents } = req.body;
     const now = new Date().toISOString();
-    
+
     // 构建更新字段
     const updates = [];
     const params = [];
-    
+
     if (title !== undefined) {
       updates.push('title = ?');
       params.push(title);
@@ -272,6 +282,13 @@ exports.updateAssignment = async (req, res) => {
     if (fileTypes !== undefined) {
       updates.push('fileTypes = ?');
       params.push(JSON.stringify(fileTypes));
+    }
+    if (req.body.maxFileSize !== undefined) {
+      let maxFileSize = parseInt(req.body.maxFileSize);
+      if (isNaN(maxFileSize) || maxFileSize < 1) maxFileSize = 1;
+      if (maxFileSize > 500) maxFileSize = 500;
+      updates.push('maxFileSize = ?');
+      params.push(maxFileSize);
     }
     if (relativeStudents !== undefined) {
       // 确保relativeStudents列存在

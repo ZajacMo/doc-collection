@@ -28,13 +28,14 @@
       <AssignmentDescription :assignment="assignment" />
 
       <!-- 提交作业表单 - 仅当用户未提交且作业未过期时显示 -->
-      <SubmissionForm 
-        v-if="!isAssignmentExpired(assignment.deadline)" 
+      <SubmissionForm
+        v-if="!isAssignmentExpired(assignment.deadline)"
         :assignment-id="assignment.id"
         :assignment-name="assignment.title"
         :is-assignment-expired="isAssignmentExpired(assignment.deadline)"
         :submission-info="submissionInfo"
         :allowed-file-types="assignment?.fileTypes || []"
+        :max-file-size="assignment?.maxFileSize || 20"
         @submission-success="loadData"
       />
       

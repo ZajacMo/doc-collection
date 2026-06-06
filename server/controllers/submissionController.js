@@ -194,18 +194,18 @@ exports.createSubmission = async (req, res) => {
     }
 
     // 检查作业是否存在
-    const assignment = await getOne('SELECT id, title, deadline, fileTypes FROM assignments WHERE id = ?', [assignmentId]);
+    const assignment = await getOne('SELECT id, title, deadline, fileTypes, maxFileSize FROM assignments WHERE id = ?', [assignmentId]);
     if (!assignment) {
       return res.status(404).json({ message: '作业不存在' });
     }
-    
+
   // 检查是否已过截止日期
   const deadline = new Date(assignment.deadline);
   const now = new Date();
   if (now > deadline) {
     return res.status(400).json({ message: '作业提交已截止' });
   }
-  
+
   // 检查必要的文件信息
   if (!fileName || !filePath) {
     return res.status(400).json({ message: '缺少文件信息' });
@@ -220,7 +220,15 @@ exports.createSubmission = async (req, res) => {
         return res.status(400).json({ message: '不支持的文件类型' });
       }
     } catch {}
-    
+
+    // 校验文件大小（按作业限制）
+    const maxFileSizeMB = assignment?.maxFileSize || Math.floor((parseInt(process.env.MAX_FILE_SIZE) || 20971520) / (1024 * 1024));
+    const maxFileSizeBytes = maxFileSizeMB * 1024 * 1024;
+    if (req.file && req.file.size > maxFileSizeBytes) {
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(413).json({ message: `文件大小超过限制，该作业最大允许 ${maxFileSizeMB}MB` });
+    }
+
     // 检查用户是否已提交
     const existingSubmission = await getOne(
       'SELECT id, fileName, filePath, fileSize FROM submissions WHERE studentId = ? AND assignmentId = ?',

@@ -75,7 +75,7 @@
           </template>
           <template #tip>
             <div class="el-upload__tip">
-              支持的文件大小不超过20MB
+              支持的文件大小不超过{{ maxFileSize }}MB
               <div style="margin-top:6px;color: var(--text-secondary);">
                 允许类型：
                 <template v-if="allowedFileTypes && allowedFileTypes.length > 0">
@@ -120,6 +120,10 @@ const props = defineProps({
   allowedFileTypes: {
     type: Array,
     default: () => []
+  },
+  maxFileSize: {
+    type: Number,
+    default: 20
   }
 });
 
@@ -160,9 +164,9 @@ const toggleManualInput = () => {
 
 // 上传前验证
 const beforeUpload = (file) => {
-  const maxSize = 20 * 1024 * 1024;
+  const maxSize = props.maxFileSize * 1024 * 1024;
   if (file.size > maxSize) {
-    ElMessage.error('文件大小不能超过20MB');
+    ElMessage.error(`文件大小不能超过${props.maxFileSize}MB`);
     return false;
   }
   if (Array.isArray(props.allowedFileTypes) && props.allowedFileTypes.length > 0) {
